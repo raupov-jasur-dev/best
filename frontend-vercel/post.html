@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Yangilik — Bukhara Best</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <style>
+    body { font-family: system-ui, sans-serif; background: #f8f9fa; }
+    .hero { max-height: 420px; width: 100%; object-fit: cover; border-radius: 12px; }
+  </style>
+</head>
+<body>
+  <nav class="navbar bg-white border-bottom sticky-top">
+    <div class="container">
+      <a class="navbar-brand fw-bold" href="/">Bukhara Best</a>
+      <a href="/" class="btn btn-sm btn-outline-secondary">← Orqaga</a>
+    </div>
+  </nav>
+  <main class="container py-4" style="max-width:800px">
+    <div id="loading" class="text-center py-5"><div class="spinner-border"></div></div>
+    <article id="article" class="d-none"></article>
+    <hr>
+    <h5>Izohlar</h5>
+    <div id="comments"></div>
+    <form id="commentForm" class="mt-3">
+      <input name="authorName" class="form-control mb-2" placeholder="Ismingiz">
+      <textarea name="content" class="form-control mb-2" rows="3" required placeholder="Izohingiz..."></textarea>
+      <button class="btn btn-primary">Yuborish</button>
+    </form>
+  </main>
+  <script src="config.js"></script>
+  <script>
+    const API = (window.__API_URL__ || '').replace(/\/$/, '') + '/api';
+    const id = new URLSearchParams(location.search).get('id');
+
+    async function load() {
+      if (!id) return location.href = '/';
+      const r = await fetch(API + '/news/' + id);
+      const { data: n } = await r.json();
+      if (!n) {
+        document.getElementById('loading').innerHTML = '<p>Topilmadi</p>';
+        return;
+      }
+      document.title = n.title + ' — Bukhara Best';
+      document.getElementById('article').innerHTML = `
+        ${n.mainImage ? `<img src="${n.mainImage}" class="hero mb-3" alt="">` : ''}
+        <span class="badge bg-primary">${n.category?.name || ''}</span>
+        <h1 class="mt-2">${n.title}</h1>
+        <p class="text-muted small">${n.publishedAt ? new Date(n.publishedAt).toLocaleString('uz-UZ') : ''} · ${n.views} ko‘rish</p>
+        <div class="mt-3">${(n.content || n.shortDescription || '').replace(/\n/g, '<br>')}</div>
+        ${n.video ? `<video src="${n.video}" controls class="w-100 mt-3" style="max-height:400px"></video>` : ''}
+        ${(n.images || []).map(i => `<img src="${i.url}" class="img-fluid rounded mt-2" alt="">`).join('')}
+      `;
+      document.getElementById('comments').innerHTML = (n.comments || []).map(c =>
+        `<div class="border-bottom py-2"><strong>${c.authorName}</strong>: ${c.content}</div>`
+      ).join('') || '<p class="text-muted">Hali izoh yo‘q</p>';
+      document.getElementById('loading').classList.add('d-none');
+      document.getElementById('article').classList.remove('d-none');
+
+      document.getElementById('commentForm').onsubmit = async (e) => {
+        e.preventDefault();
+        const fd = new FormData(e.target);
+        await fetch(API + '/news/' + id + '/comments', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ authorName: fd.get('authorName'), content: fd.get('content') })
+        });
+        location.reload();
+      };
+    }
+    load().catch(e => {
+      document.getElementById('loading').innerHTML = '<div class="alert alert-danger">Xato: ' + e.message + '</div>';
+    });
+  </script>
+</body>
+</html>

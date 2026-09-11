@@ -1,0 +1,33 @@
+<header id="header" class="header d-flex align-items-center fixed-top">
+  <div class="container-fluid container-xl d-flex align-items-center justify-content-between">
+    <a href="{% url 'home' %}" class="logo d-flex align-items-center">
+      <h1>Bukhara Best</h1>
+    </a>
+
+    <nav id="navbar" class="navbar">
+      <ul>
+        {% for item in categories %}
+        <li><a href="{% url 'detail-category-post' item.id %}">{{ item.name }}</a></li>
+        {% endfor %}
+      </ul>
+    </nav>
+
+    <div class="position-relative">
+      <a href="https://www.facebook.com/bukhara.best/" target="_blank" class="mx-2"><span class="bi-facebook"></span></a>
+      <a href="https://t.me/Buxarabest" target="_blank" class="mx-2"><span class="bi-telegram"></span></a>
+      <a href="https://www.youtube.com/@bukharabest2436" target="_blank" class="mx-2"><span class="bi bi-youtube"></span></a>
+      <a href="https://www.instagram.com/buxarabest_/" target="_blank" class="mx-2"><span class="bi-instagram"></span></a>
+
+      <a href="#" class="mx-2 js-search-open"><span class="bi-search"></span></a>
+      <i class="bi bi-list mobile-nav-toggle"></i>
+
+      <div class="search-form-wrap js-search-form-wrap">
+        <form action="{% url 'search_posts' %}" method="get" class="search-form">
+          <span class="icon bi-search"></span>
+          <input type="text" name="q" value="{{ request.GET.q }}" placeholder="Qidirish" class="form-control" required>
+          <button type="button" class="btn js-search-close" aria-label="Close"><span class="bi-x"></span></button>
+        </form>
+      </div>
+    </div>
+  </div>
+</header>

@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin - Bukhara Best</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <style>
+    :root { --sidebar-w: 250px; }
+    body { background: #f4f6f9; }
+    .sidebar { width: var(--sidebar-w); min-height: 100vh; background: #1e293b; color: #e2e8f0; position: fixed; }
+    .sidebar a { color: #94a3b8; text-decoration: none; display: block; padding: .75rem 1.25rem; }
+    .sidebar a:hover, .sidebar a.active { background: #334155; color: #fff; }
+    .main { margin-left: var(--sidebar-w); padding: 1.5rem; }
+    .stat-card { border: none; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+    .login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg,#1e293b,#0f172a); }
+    .login-card { width: 100%; max-width: 400px; border-radius: 16px; }
+    .table img { max-height: 40px; border-radius: 4px; }
+    #app { display: none; }
+    #loginPage { display: none; }
+  </style>
+</head>
+<body>
+  <div id="loginPage" class="login-wrap">
+    <div class="card login-card shadow">
+      <div class="card-body p-4">
+        <h4 class="mb-3 text-center">Bukhara Best Admin</h4>
+        <div id="loginError" class="alert alert-danger d-none"></div>
+        <form id="loginForm">
+          <div class="mb-3">
+            <label class="form-label">Username</label>
+            <input type="text" class="form-control" id="username" required value="admin">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Password</label>
+            <input type="password" class="form-control" id="password" required>
+          </div>
+          <button class="btn btn-primary w-100" type="submit">Kirish</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div id="app">
+    <div class="sidebar">
+      <div class="p-3 border-bottom border-secondary">
+        <strong class="text-white">Bukhara Best</strong>
+        <div class="small text-muted">Admin Panel</div>
+      </div>
+      <nav class="mt-2">
+        <a href="#dashboard" data-page="dashboard" class="active"><i class="bi bi-speedometer2 me-2"></i>Dashboard</a>
+        <a href="#news" data-page="news"><i class="bi bi-newspaper me-2"></i>Yangiliklar</a>
+        <a href="#news-create" data-page="news-create"><i class="bi bi-plus-circle me-2"></i>Yangi qo'shish</a>
+        <a href="#categories" data-page="categories"><i class="bi bi-tags me-2"></i>Kategoriyalar</a>
+        <a href="#comments" data-page="comments"><i class="bi bi-chat-dots me-2"></i>Izohlar</a>
+        <a href="#" id="logoutBtn"><i class="bi bi-box-arrow-right me-2"></i>Chiqish</a>
+      </nav>
+    </div>
+    <div class="main">
+      <div id="content"></div>
+    </div>
+  </div>
+
+  <script src="/config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    const API = (window.__API_URL__ || localStorage.getItem('API_URL') || (location.hostname==='localhost'?'http://localhost:3000':'')).replace(/\/$/, '') + '/api';
+    let token = localStorage.getItem('admin_token') || '';
+
+    function headers(json = true) {
+      const h = { Authorization: 'Bearer ' + token };
+      if (json) h['Content-Type'] = 'application/json';
+      return h;
+    }
+
+    async function api(path, opts = {}) {
+      const res = await fetch(API + path, { ...opts, headers: { ...headers(!(opts.body instanceof FormData)), ...opts.headers } });
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 401) { logout(); throw new Error('Unauthorized'); }
+      if (!res.ok) throw new Error(data.message || 'Error');
+      return data;
+    }
+
+    function logout() {
+      token = '';
+      localStorage.removeItem('admin_token');
+      showLogin();
+    }
+
+    function showLogin() {
+      document.getElementById('app').style.display = 'none';
+      document.getElementById('loginPage').style.display = 'flex';
+    }
+
+    function showApp() {
+      document.getElementById('loginPage').style.display = 'none';
+      document.getElementById('app').style.display = 'block';
+      route();
+    }
+
+    document.getElementById('loginForm').onsubmit = async (e) => {
+      e.preventDefault();
+      const err = document.getElementById('loginError');
+      err.classList.add('d-none');
+      try {
+        const data = await fetch(API + '/admin/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            username: document.getElementById('username').value,
+            password: document.getElementById('password').value
+          })
+        }).then(r => r.json());
+        if (!data.success) throw new Error(data.message);
+        token = data.token;
+        localStorage.setItem('admin_token', token);
+        showApp();
+      } catch (ex) {
+        err.textContent = ex.message;
+        err.classList.remove('d-none');
+      }
+    };
+
+    document.getElementById('logoutBtn').onclick = (e) => { e.preventDefault(); logout(); };
+
+    document.querySelectorAll('[data-page]').forEach(a => {
+      a.onclick = (e) => {
+        e.preventDefault();
+        document.querySelectorAll('[data-page]').forEach(x => x.classList.remove('active'));
+        a.classList.add('active');
+        location.hash = a.dataset.page;
+        route();
+      };
+    });
+
+    async function route() {
+      const page = (location.hash || '#dashboard').slice(1);
+      const el = document.getElementById('content');
+      el.innerHTML = '<div class="text-center py-5"><div class="spinner-border"></div></div>';
+      try {
+        if (page === 'dashboard') await renderDashboard(el);
+        else if (page === 'news') await renderNews(el);
+        else if (page === 'news-create') await renderNewsForm(el);
+        else if (page.startsWith('news-edit-')) await renderNewsForm(el, page.replace('news-edit-', ''));
+        else if (page === 'categories') await renderCategories(el);
+        else if (page === 'comments') await renderComments(el);
+        else el.innerHTML = '<p>Not found</p>';
+      } catch (e) {
+        el.innerHTML = `<div class="alert alert-danger">${e.message}</div>`;
+      }
+    }
+
+    async function renderDashboard(el) {
+      const { data } = await api('/admin/dashboard');
+      el.innerHTML = `
+        <h3 class="mb-4">Dashboard</h3>
+        <div class="row g-3 mb-4">
+          <div class="col-md-3"><div class="card stat-card p-3"><div class="text-muted small">Jami yangiliklar</div><div class="fs-3 fw-bold">${data.totalNews}</div></div></div>
+          <div class="col-md-3"><div class="card stat-card p-3"><div class="text-muted small">Published</div><div class="fs-3 fw-bold text-success">${data.publishedNews}</div></div></div>
+          <div class="col-md-3"><div class="card stat-card p-3"><div class="text-muted small">Draft</div><div class="fs-3 fw-bold text-warning">${data.draftNews}</div></div></div>
+          <div class="col-md-3"><div class="card stat-card p-3"><div class="text-muted small">Views</div><div class="fs-3 fw-bold">${data.totalViews}</div></div></div>
+          <div class="col-md-3"><div class="card stat-card p-3"><div class="text-muted small">Kategoriyalar</div><div class="fs-3 fw-bold">${data.totalCategories}</div></div></div>
+          <div class="col-md-3"><div class="card stat-card p-3"><div class="text-muted small">Izohlar</div><div class="fs-3 fw-bold">${data.totalComments}</div></div></div>
+          <div class="col-md-3"><div class="card stat-card p-3"><div class="text-muted small">Telegram OK</div><div class="fs-3 fw-bold text-success">${data.telegramPublished}</div></div></div>
+          <div class="col-md-3"><div class="card stat-card p-3"><div class="text-muted small">Telegram failed</div><div class="fs-3 fw-bold text-danger">${data.telegramFailed}</div></div></div>
+        </div>
+        <h5>Eng ko'p ko'rilgan</h5>
+        <div class="table-responsive"><table class="table table-sm bg-white"><thead><tr><th>Title</th><th>Views</th><th>Category</th></tr></thead>
+        <tbody>${(data.topViewed||[]).map(n => `<tr><td>${n.title}</td><td>${n.views}</td><td>${n.category?.name||''}</td></tr>`).join('')}</tbody></table></div>`;
+    }
+
+    async function renderNews(el) {
+      const { data } = await api('/admin/news?limit=50');
+      el.innerHTML = `
+        <div class="d-flex justify-content-between mb-3"><h3>Yangiliklar</h3>
+        <a href="#news-create" class="btn btn-primary btn-sm" onclick="location.hash='news-create';route()">+ Qo'shish</a></div>
+        <div class="table-responsive bg-white rounded shadow-sm">
+        <table class="table table-hover mb-0">
+          <thead><tr><th>ID</th><th>Title</th><th>Status</th><th>TG</th><th>Views</th><th></th></tr></thead>
+          <tbody>${data.map(n => `
+            <tr>
+              <td>${n.id}</td>
+              <td>${n.mainImage ? `<img src="${n.mainImage}" class="me-2">` : ''}${n.title.slice(0,60)}</td>
+              <td><span class="badge bg-${n.status==='published'?'success':'secondary'}">${n.status}</span></td>
+              <td><span class="badge bg-${n.telegramStatus==='published'?'success':n.telegramStatus==='failed'?'danger':'secondary'}">${n.telegramStatus||'-'}</span>
+                ${n.telegramStatus==='failed' ? `<button class="btn btn-sm btn-outline-danger ms-1" onclick="retryTg(${n.id})">Retry</button>` : ''}
+              </td>
+              <td>${n.views}</td>
+              <td>
+                <button class="btn btn-sm btn-outline-primary" onclick="location.hash='news-edit-${n.id}';route()">Edit</button>
+                <button class="btn btn-sm btn-outline-danger" onclick="delNews(${n.id})">Del</button>
+              </td>
+            </tr>`).join('')}
+          </tbody>
+        </table></div>`;
+    }
+
+    window.retryTg = async (id) => {
+      try {
+        await api('/admin/news/' + id + '/telegram-retry', { method: 'POST' });
+        alert('Telegram qayta yuborildi');
+        route();
+      } catch (e) { alert(e.message); }
+    };
+
+    window.delNews = async (id) => {
+      if (!confirm('O\'chirishni tasdiqlaysizmi?')) return;
+      await api('/admin/news/' + id, { method: 'DELETE' });
+      route();
+    };
+
+    async function renderNewsForm(el, id = null) {
+      let news = null;
+      if (id) {
+        const r = await api('/admin/news/' + id);
+        news = r.data;
+      }
+      const cats = (await api('/admin/categories')).data;
+      el.innerHTML = `
+        <h3 class="mb-3">${id ? 'Tahrirlash' : 'Yangi yangilik'}</h3>
+        <form id="newsForm" class="bg-white p-4 rounded shadow-sm">
+          <div class="mb-3"><label class="form-label">Sarlavha *</label>
+            <input class="form-control" name="title" required value="${news?.title||''}"></div>
+          <div class="mb-3"><label class="form-label">Qisqa tavsif</label>
+            <textarea class="form-control" name="shortDescription" rows="2">${news?.shortDescription||''}</textarea></div>
+          <div class="mb-3"><label class="form-label">To'liq matn</label>
+            <textarea class="form-control" name="content" rows="8">${news?.content||''}</textarea></div>
+          <div class="row mb-3">
+            <div class="col-md-6"><label class="form-label">Kategoriya *</label>
+              <select class="form-select" name="categoryId" required>
+                ${cats.map(c => `<option value="${c.id}" ${news?.categoryId==c.id?'selected':''}>${c.name}</option>`).join('')}
+              </select></div>
+            <div class="col-md-3"><label class="form-label">Status</label>
+              <select class="form-select" name="status">
+                <option value="draft" ${news?.status==='draft'?'selected':''}>Draft</option>
+                <option value="published" ${news?.status==='published'?'selected':''}>Published</option>
+              </select></div>
+            <div class="col-md-3 form-check mt-4">
+              <input type="checkbox" class="form-check-input" name="featured" id="featured" ${news?.featured?'checked':''}>
+              <label class="form-check-label" for="featured">Featured</label>
+            </div>
+          </div>
+          <div class="mb-3"><label class="form-label">Asosiy rasm</label>
+            <input type="file" class="form-control" name="mainImage" accept="image/*">
+            ${news?.mainImage ? `<img src="${news.mainImage}" class="mt-2" style="max-height:80px">` : ''}</div>
+          <div class="mb-3"><label class="form-label">Qo'shimcha rasmlar</label>
+            <input type="file" class="form-control" name="additionalImages" accept="image/*" multiple></div>
+          <div class="mb-3"><label class="form-label">Video</label>
+            <input type="file" class="form-control" name="video" accept="video/*">
+            ${news?.video ? `<video src="${news.video}" class="mt-2" style="max-height:100px" controls></video>` : ''}</div>
+          ${news?.telegramError ? `<div class="alert alert-warning">Telegram xato: ${news.telegramError}</div>` : ''}
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-secondary" name="action" value="save">Saqlash (Draft)</button>
+            <button type="submit" class="btn btn-primary" name="action" value="publish">Saqlash va e'lon qilish</button>
+          </div>
+        </form>`;
+      document.getElementById('newsForm').onsubmit = async (e) => {
+        e.preventDefault();
+        const btn = e.submitter;
+        const fd = new FormData(e.target);
+        fd.set('featured', e.target.featured.checked);
+        if (btn.value === 'publish') fd.set('publishAndTelegram', 'true');
+        else fd.set('status', 'draft');
+        try {
+          const url = id ? '/admin/news/' + id : '/admin/news';
+          const method = id ? 'PUT' : 'POST';
+          const res = await fetch(API + url, { method, headers: { Authorization: 'Bearer ' + token }, body: fd });
+          const data = await res.json();
+          if (!data.success) throw new Error(data.message);
+          alert(btn.value === 'publish' ? 'E\'lon qilindi va Telegramga yuborildi (yoki xato saqlandi)' : 'Draft saqlandi');
+          location.hash = 'news';
+          route();
+        } catch (ex) { alert(ex.message); }
+      };
+    }
+
+    async function renderCategories(el) {
+      const { data } = await api('/admin/categories');
+      el.innerHTML = `
+        <h3 class="mb-3">Kategoriyalar</h3>
+        <form id="catForm" class="row g-2 mb-4 bg-white p-3 rounded">
+          <div class="col-md-4"><input class="form-control" name="name" placeholder="Nomi" required></div>
+          <div class="col-md-4"><input class="form-control" name="description" placeholder="Tavsif"></div>
+          <div class="col-md-2"><button class="btn btn-primary w-100">Qo'shish</button></div>
+        </form>
+        <table class="table bg-white"><thead><tr><th>ID</th><th>Name</th><th>Slug</th><th></th></tr></thead>
+        <tbody>${data.map(c => `<tr><td>${c.id}</td><td>${c.name}</td><td>${c.slug}</td>
+          <td><button class="btn btn-sm btn-outline-danger" onclick="delCat(${c.id})">Del</button></td></tr>`).join('')}</tbody></table>`;
+      document.getElementById('catForm').onsubmit = async (e) => {
+        e.preventDefault();
+        const fd = new FormData(e.target);
+        await api('/admin/categories', { method: 'POST', body: fd, headers: { Authorization: 'Bearer ' + token } });
+        route();
+      };
+    }
+    window.delCat = async (id) => {
+      if (!confirm('O\'chirish?')) return;
+      try { await api('/admin/categories/' + id, { method: 'DELETE' }); route(); }
+      catch (e) { alert(e.message); }
+    };
+
+    async function renderComments(el) {
+      const { data } = await api('/admin/comments');
+      el.innerHTML = `
+        <h3 class="mb-3">Izohlar</h3>
+        <table class="table bg-white"><thead><tr><th>ID</th><th>Author</th><th>Comment</th><th>News</th><th>OK</th><th></th></tr></thead>
+        <tbody>${data.map(c => `<tr>
+          <td>${c.id}</td><td>${c.authorName}</td><td>${(c.content||'').slice(0,80)}</td>
+          <td>${c.news?.title?.slice(0,40)||''}</td>
+          <td>${c.isApproved ? '✓' : '✗'}</td>
+          <td><button class="btn btn-sm btn-outline-danger" onclick="delComment(${c.id})">Del</button></td>
+        </tr>`).join('')}</tbody></table>`;
+    }
+    window.delComment = async (id) => {
+      if (!confirm('O\'chirish?')) return;
+      await api('/admin/comments/' + id, { method: 'DELETE' });
+      route();
+    };
+
+    // Init
+    if (token) {
+      api('/admin/me').then(showApp).catch(showLogin);
+    } else showLogin();
+    window.addEventListener('hashchange', route);
+  </script>
+</body>
+</html>

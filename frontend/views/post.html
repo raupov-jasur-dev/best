@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block content %}
+{% include "include/header.html" %}
+
+<div class="container-fluid latest-news py-5">
+  <div class="container py-5">
+    <div class="row">
+      {% for item in page_obj %}
+      <div class="col-sm-6 col-md-4 mb-4 d-flex align-items-stretch">
+        <div class="bg-light rounded d-flex flex-column h-100 w-100">
+          <div class="rounded-top overflow-hidden" style="height: 250px; width: 100%;">
+            {% if item.main_image %}
+            <img src="{{ item.main_image.url }}" class="img-fluid h-100 w-100 object-fit-cover img-zoomin" alt="">
+            {% endif %}
+          </div>
+          <div class="d-flex flex-column p-4 flex-grow-1">
+            <a href="{% url 'post-detail' item.id %}" class="h4 mb-3">{{ item.header|truncatechars:50 }}</a>
+            <div class="mt-auto">
+              <div class="d-flex justify-content-between">
+                <small class="text-body">{{ item.published_date|date:"Y-m-d" }}</small>
+                <small>{{ item.is_seen }} Koʻrishlar</small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% empty %}
+      <div class="col-12"><p>Hali postlar yo‘q.</p></div>
+      {% endfor %}
+
+      {% if page_obj.has_other_pages %}
+      <nav aria-label="Page navigation">
+        <ul class="pagination">
+          {% if page_obj.has_previous %}
+          <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">&laquo;</a></li>
+          {% endif %}
+          {% for num in page_obj.paginator.page_range %}
+            {% if page_obj.number == num %}
+            <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+            {% else %}
+            <li class="page-item"><a class="page-link" href="?page={{ num }}">{{ num }}</a></li>
+            {% endif %}
+          {% endfor %}
+          {% if page_obj.has_next %}
+          <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">&raquo;</a></li>
+          {% endif %}
+        </ul>
+      </nav>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock content %}

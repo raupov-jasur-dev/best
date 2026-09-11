@@ -1,0 +1,24 @@
+<header id="header" class="header d-flex align-items-center fixed-top">
+  <div class="container-fluid container-xl d-flex align-items-center justify-content-between">
+    <a href="/" class="logo d-flex align-items-center">
+      <h1>Bukhara Best</h1>
+    </a>
+    <nav id="navbar" class="navbar">
+      <ul>
+        <li><a href="/">Bosh sahifa</a></li>
+        <li><a href="/post">Yangiliklar</a></li>
+        <% (categories || []).slice(0, 6).forEach(c => { %>
+        <li><a href="/category/post/<%= c.id %>"><%= c.name %></a></li>
+        <% }) %>
+        <li><a href="/search">Qidiruv</a></li>
+      </ul>
+    </nav>
+    <div class="position-relative">
+      <a href="#" class="mx-2"><span class="bi-facebook"></span></a>
+      <a href="#" class="mx-2"><span class="bi-twitter"></span></a>
+      <a href="#" class="mx-2"><span class="bi-instagram"></span></a>
+      <a href="/search" class="mx-2 js-search-open"><span class="bi-search"></span></a>
+      <i class="bi bi-list mobile-nav-toggle"></i>
+    </div>
+  </div>
+</header>

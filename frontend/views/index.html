@@ -1,0 +1,469 @@
+{% extends "base.html" %}
+
+
+{% block content %}
+
+  <header id="header" class="header d-flex align-items-center fixed-top">
+    <div class="container-fluid container-xl d-flex align-items-center justify-content-between">
+
+      <a href="index.html" class="logo d-flex align-items-center">
+        <!-- Uncomment the line below if you also wish to use an image logo -->
+        <!-- <img src="assets/img/logo.png" alt=""> -->
+        <h1>ZenBlog</h1>
+      </a>
+
+      <nav id="navbar" class="navbar">
+        <ul>
+          <li><a href="index.html">Blog</a></li>
+          <li><a href="single-post.html">Single Post</a></li>
+          <li class="dropdown"><a href="category.html"><span>Categories</span> <i class="bi bi-chevron-down dropdown-indicator"></i></a>
+            <ul>
+              <li><a href="search-result.html">Search Result</a></li>
+              <li><a href="#">Drop Down 1</a></li>
+              <li class="dropdown"><a href="#"><span>Deep Drop Down</span> <i class="bi bi-chevron-down dropdown-indicator"></i></a>
+                <ul>
+                  <li><a href="#">Deep Drop Down 1</a></li>
+                  <li><a href="#">Deep Drop Down 2</a></li>
+                  <li><a href="#">Deep Drop Down 3</a></li>
+                  <li><a href="#">Deep Drop Down 4</a></li>
+                  <li><a href="#">Deep Drop Down 5</a></li>
+                </ul>
+              </li>
+              <li><a href="#">Drop Down 2</a></li>
+              <li><a href="#">Drop Down 3</a></li>
+              <li><a href="#">Drop Down 4</a></li>
+            </ul>
+          </li>
+
+          <li><a href="about.html">About</a></li>
+          <li><a href="contact.html">Contact</a></li>
+        </ul>
+      </nav><!-- .navbar -->
+
+      <div class="position-relative">
+        <a href="#" class="mx-2"><span class="bi-facebook"></span></a>
+        <a href="#" class="mx-2"><span class="bi-twitter"></span></a>
+        <a href="#" class="mx-2"><span class="bi-instagram"></span></a>
+
+        <a href="#" class="mx-2 js-search-open"><span class="bi-search"></span></a>
+        <i class="bi bi-list mobile-nav-toggle"></i>
+
+        <!-- ======= Search Form ======= -->
+        <div class="search-form-wrap js-search-form-wrap">
+          <form action="search-result.html" class="search-form">
+            <span class="icon bi-search"></span>
+            <input type="text" placeholder="Search" class="form-control">
+            <button class="btn js-search-close"><span class="bi-x"></span></button>
+          </form>
+        </div><!-- End Search Form -->
+
+      </div>
+
+    </div>
+
+  </header><!-- End Header -->
+<div class="container-fluid bg-light">
+    <div class="container px-0">
+        <nav class="navbar navbar-light navbar-expand-xl">
+            <a href="{% url 'home' %}" class="navbar-brand mt-3">
+                <p class="text-primary display-6 mb-2" style="line-height: 0;">Bukhara Best</p>
+                <small class="text-body fw-normal" style="letter-spacing: 12px;">yangiliklari</small>
+            </a>
+            <button class="navbar-toggler py-2 px-3" type="button" data-bs-toggle="collapse"
+                    data-bs-target="#navbarCollapse">
+                <span class="fa fa-bars text-primary"></span>
+            </button>
+            <div class="collapse navbar-collapse bg-light py-3" id="navbarCollapse">
+                <div class="navbar-nav mx-auto border-top">
+                    <a href="{% url 'post' %}" class="nav-item nav-link active">Barchasi</a>
+                    {% for catID in categories %}
+                    <a href="{% url 'detail-category-post' catID.id %}" class="nav-item nav-link active">{{catID.name}}</a>
+                    {% endfor %}
+
+                </div>
+                <div class="d-flex flex-nowrap border-top pt-3 pt-xl-0">
+                    <div class="d-flex">
+                        <img src="img/weather-icon.png" class="img-fluid w-100 me-2" alt="">
+                        <div class="d-flex align-items-center">
+                            <strong class="fs-4 text-secondary" id="weather"></strong>
+                            <div class="d-flex flex-column ms-2" style="width: 150px;">
+                                <span class="text-body">Buxoro Viloyat</span>
+                                <span class="text-body" id="current-time"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="btn-search btn border border-primary btn-md-square rounded-circle bg-white my-auto"
+                            data-bs-toggle="modal" data-bs-target="#searchModal"><i
+                            class="fas fa-search text-primary"></i></button>
+                </div>
+            </div>
+        </nav>
+    </div>
+</div>
+</div>
+<!-- Navbar End -->
+
+
+<!-- Modal Search Start -->
+<!--<div class="modal fade" id="searchModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">-->
+<!--    <div class="modal-dialog modal-fullscreen">-->
+<!--        <div class="modal-content rounded-0">-->
+<!--            <div class="modal-header">-->
+<!--                <h5 class="modal-title" id="exampleModalLabel">Search by keyword</h5>-->
+<!--                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>-->
+<!--            </div>-->
+<!--            <div class="modal-body d-flex align-items-center">-->
+<!--                <div class="input-group w-75 mx-auto d-flex">-->
+<!--                    <input type="search" class="form-control p-3" placeholder="Qidiruv"-->
+<!--                           aria-describedby="search-icon-1">-->
+<!--                    <span id="search-icon-1" class="input-group-text p-3"><i class="fa fa-search"></i></span>-->
+<!--                </div>-->
+<!--            </div>-->
+<!--        </div>-->
+<!--    </div>-->
+
+<div class="modal fade" id="searchModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-fullscreen">
+        <div class="modal-content rounded-0">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel">Search by keyword</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body d-flex align-items-center">
+                <div class="input-group w-75 mx-auto d-flex">
+                    <input type="search" class="form-control p-3" placeholder="Qidiruv" aria-describedby="search-icon-1">
+                    <span id="search-icon-1" class="input-group-text p-3"><i class="fa fa-search"></i></span>
+                </div>
+                <div id="search-results"></div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Modal Search End -->
+
+<!-- Main Post Section Start -->
+<div class="container-fluid py-5">
+    <div class="container py-5">
+        <div class="row g-4">
+            <div class="col-lg-7 col-xl-8 mt-0">
+                <div class="position-relative overflow-hidden rounded">
+                    <img src="{{ last_post.main_image.url }}" class="img-fluid rounded img-zoomin w-100" alt="">
+                    <div class="d-flex justify-content-center px-4 position-absolute flex-wrap"
+                         style="bottom: 10px; left: 0;">
+                        <a href="#" class="text-white me-3 link-hover"><i class="fa fa-clock"></i> {{ last_post.published_date|date:"Y-m-d" }}</a>
+                        <a href="#" class="text-white me-3 link-hover"><i class="fa fa-eye"></i> {{ last_post.is_seen }} Koʻrishlar</a>
+                    </div>
+                </div>
+                <div class="border-bottom py-3">
+                    <a href="{% url 'post-detail' last_post.id %}" class="display-4 text-dark mb-0 link-hover">{{last_post.header | truncatechars:50}}</a>
+                </div>
+                <p class="mt-3 mb-4">{{i.title}}
+                </p>
+                <div class="bg-light p-4 rounded">
+                    <div class="news-2">
+                        <h3 class="mb-4">Top Yangilik</h3>
+                    </div>
+                    <div class="row g-4 align-items-center">
+                        <div class="col-md-6">
+                            <div class="rounded overflow-hidden"  >
+                                <img src="{{ random_post.main_image.url }}" class="img-fluid rounded img-zoomin w-100">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="d-flex flex-column">
+                                <a href="{% url 'post-detail' random_post.id %}" class="h3">{{ random_post.header| truncatechars:50 }}</a>
+                                <p class="mb-0 fs-5"><i class="fa fa-clock"> {{ random_post.published_date|date:"Y-m-d" }} </i></p>
+                                <p class="mb-0 fs-5"><i class="fa fa-eye"> {{ random_post.is_seen }} Koʻrishlar</i></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-5 col-xl-4">
+                <div class="bg-light rounded p-4 pt-0">
+                    <div class="row g-4">
+                        <div class="col-12">
+                            <div class="rounded overflow-hidden" >
+                                <img src="{{ random_post.main_image.url }}" class="img-fluid rounded img-zoomin w-100px" alt="">
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="d-flex flex-column">
+                                <a href="{% url 'post-detail' random_post.id %}" class="h4 mb-2">{{ random_post.header| truncatechars:50 }}</a>
+                                <div class="d-flex flex-column">
+                                    <p class="fs-5 mb-0"><i class="fa fa-clock"> {{ random_post.published_date|date:"Y-m-d" }}</i></p>
+                                    <p class="fs-5 mb-0"><i class="fa fa-eye"> {{ random_post.is_seen }} Koʻrishlar</i></p>                                </div>
+                            </div>
+                        </div>
+                        {% for last_four_post in last_four_posts %}
+                        <div class="col-12">
+                            <div class="row g-4 align-items-center">
+                                <div class="col-5">
+                                    <div class="overflow-hidden rounded">
+                                        <img src="{{ last_four_post.main_image.url }}"
+                                             class="img-zoomin img-fluid rounded w-100" alt=""  style="height: 90px">
+                                    </div>
+                                </div>
+                                <div class="col-7">
+                                    <div class="features-content d-flex flex-column">
+                                        <a href="{% url 'post-detail' last_four_post.id %}" class="h6">{{ last_four_post.header | truncatechars:50 }}.</a>
+                                        <small><i class="fa fa-clock"> {{ last_four_post.published_date|date:"Y-m-d" }}</i> </small>
+                                        <small><i class="fa fa-eye"> {{ last_four_post.is_seen }} Koʻrishlar</i></small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Main Post Section End -->
+
+<!-- Latest News Start -->
+<div class="container-fluid latest-news py-5"
+     style="background: linear-gradient(rgba(202, 203, 185, 1), rgba(202, 203, 185, 1));">
+    <div class="container py-5">
+        <h2 class="mb-4">Son'gi yangiliklar</h2>
+        <div class="latest-news-carousel owl-carousel">
+            {% for seven_post in random_seven_posts %}
+            <div class="latest-news-item">
+                <div class="bg-light rounded р-100">
+                    <div class="rounded-top overflow-hidden">
+                        <img src="{{ seven_post.main_image.url }}" class=" img-fluid object-fit-contain img-zoomin" alt="" style="height: 180px">
+                    </div>
+                    <div class="d-flex flex-column p-4">
+                        <a href="{% url 'post-detail' seven_post.id %}" class="h4" style="height:100px">{{ seven_post.header| truncatechars:50 }}</a>
+                        <div class="d-flex justify-content-between">
+                            <small class="text-body d-block"><i class="fas fa-calendar-alt me-1"></i> {{ seven_post.published_date|date:"Y-m-d" }}</small>
+                            <small><i class="fa fa-eye"> {{ seven_post.is_seen }} Koʻrishlar</i></small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+<!-- Latest News End -->
+
+
+<!-- Most Populer News Start -->
+<div class="container-fluid populer-news py-5">
+    <div class="container py-5">
+        <div class="tab-class mb-4">
+            <div class="row g-4">
+                <div class="col-lg-8 col-xl-9">
+                    <div class="d-flex flex-column flex-md-row justify-content-md-between border-bottom mb-4" >
+                        <h1 class="mb-4">Yangiliklar</h1>
+                    </div>
+                    <div class="tab-content mb-4">
+                        <div id="tab-1" class="tab-pane fade show p-0 active">
+                            <div class="row g-4">
+                                <div class="col-lg-8">
+                                    <div class="position-relative rounded overflow-hidden">
+                                        <img src="{{ random_post.main_image.url }}"
+                                             class="img-zoomin img-fluid rounded w-100" alt="" >
+                                    </div>
+                                    <div class="my-4">
+                                        <a href="{% url 'post-detail' random_post.id %}" class="h4">{{ random_post.header }}.</a>
+                                    </div>
+                                    <div class="d-flex justify-content-between">
+                                        <a href="#" class="text-dark link-hover me-3"><i class="fa fa-clock"></i>{{ random_post.published_date|date:"Y-m-d" }}</a>
+                                        <a href="#" class="text-dark link-hover me-3"><i class="fa fa-eye"></i> {{ random_post.is_seen }} Koʻrishlar</a>
+                                    </div>
+                                    <p class="my-4">{{ random_post.description| truncatechars:200 }}
+                                    </p>
+                                </div>
+
+                                <div class="col-lg-4">
+                                    <div class="row g-4">
+
+                                        {% for item in last_five_posts %}
+                                        <div class="col-12">
+                                            <div class="row g-4 align-items-center">
+                                                <div class="col-5">
+                                                    <div class="overflow-hidden rounded">
+                                                        <img src="{{ item.main_image.url }}"
+                                                             class="img-zoomin img-fluid rounded w-100" alt="" style="height: 70px">
+                                                    </div>
+                                                </div>
+                                                <div class="col-7">
+                                                    <div class="features-content d-flex flex-column">
+                                                        <p class="text-uppercase mb-2">{{ item.category.name }}</p>
+                                                        <a href="{% url 'post-detail' random_post.id %}" class="h6">{{ item.header| truncatechars:50 }}</a>
+                                                        <small class="text-body d-block"><i
+                                                                class="fas fa-calendar-alt me-1"></i>{{ item.published_date|date:"Y-m-d" }}</small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="border-bottom mb-4">
+                        <h2 class="my-4">Yangiliklar</h2>
+                    </div>
+                    <div class="whats-carousel owl-carousel">
+                        {% for i in random_six_posts %}
+                        <div class="latest-news-item">
+                            <div class="bg-light rounded">
+                                <div class="rounded-top overflow-hidden">
+                                    <img src="{{ i.main_image.url }}" class="img-zoomin img-fluid rounded-top w-100"
+                                         alt="" style="height: 314px">
+                                </div>
+                                <div class="d-flex flex-column p-4 mb-5">
+                                    <a href="{% url 'post-detail' i.id %}" class="h4" style="height: 85px">{{ i.header| truncatechars:50 }}</a>
+                                    <div class="d-flex justify-content-between">
+                                        <small class="text-body d-block"><i class="fas fa-calendar-alt me-1"></i>{{ i.published_date|date:"Y-m-d" }}</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="col-lg-4 col-xl-3">
+                    <div class="row g-4">
+                        <div class="col-12">
+                            <div class="p-3 rounded border">
+                                <h4 class="mb-4">Messangerlar</h4>
+                                <div class="row g-4">
+                                    <div class="col-12">
+                                        <a href="https://facebook.com/bukhara.best/"
+                                           class="w-100 rounded btn btn-primary d-flex align-items-center p-3 mb-2">
+                                            <i class="fab fa-facebook-f btn btn-light btn-square rounded-circle me-3"></i>
+                                            <span class="text-white">13,977 Muxlislar</span>
+                                        </a>
+                                        <a href="https://www.youtube.com/@bukharabest2436"
+                                           class="w-100 rounded btn btn-warning d-flex align-items-center p-3 mb-2">
+                                            <i class="fab fa-youtube btn btn-light btn-square rounded-circle me-3"></i>
+                                            <span class="text-white">7,999 Obunachi</span>
+                                        </a>
+                                        <a href="https://www.instagram.com/buxarabest_/"
+                                           class="w-100 rounded btn btn-dark d-flex align-items-center p-3 mb-2">
+                                            <i class="fab fa-instagram btn btn-light btn-square rounded-circle me-3"></i>
+                                            <span class="text-white">19,764 Muxlislar</span>
+                                        </a>
+                                        <a href="https://t.me/Buxarabest"
+                                           class="w-100 rounded btn btn-danger d-flex align-items-center p-3 mb-4">
+                                            <i class="fab fa-telegram btn btn-light btn-square rounded-circle me-3"></i>
+                                            <span class="text-white">37,999 Obunachi</span>
+                                        </a>
+                                    </div>
+                                </div>
+                                <h4 class="my-4">Mashhur Yangiliklar</h4>
+                                <div class="row g-4">
+                                    {% for i in randoms_four_posts %}
+                                    <div class="col-12">
+                                        <div class="row g-4 align-items-center features-item">
+                                            <div class="col-12">
+                                                <div class="features-content d-flex flex-column">
+                                                    <p class="text-uppercase mb-2">{{ i.category.name }}</p>
+                                                    <a href="{% url 'post-detail' i.id %}" class="h6">
+                                                        {{ i.header| truncatechars:50 }}
+                                                    </a>
+                                                    <small class="text-body d-block"><i
+                                                            class="fas fa-calendar-alt me-1"></i>{{ i.published_date|date:"Y-m-d" }}</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+
+                                    <div class="col-lg-12">
+                                        <a href="{% url 'post' %}"
+                                           class="link-hover btn border border-primary rounded-pill text-dark w-100 py-3 mb-4">Barchasi</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Most Populer News End -->
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Замените 'YOUR_API_KEY' на ваш действительный API ключ
+    const apiKey = '7db9064a5e45ab50a75380a679a7583d';
+    // Используйте город по вашему выбору
+    const city = 'Bukhara,UZ';;
+    const url = `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}&units=metric`;
+
+    fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            const temperature = data.main.temp;
+            const weatherDescription = data.weather[0].description;
+            document.getElementById('weather').textContent = `${temperature}°C`;
+        })
+        .catch(error => {
+            console.error('Error fetching weather data:', error);
+            document.getElementById('weather').textContent = 'Failed to load weather data.';
+        });
+});
+</script>
+<script>
+// Функция для обновления времени на странице
+function updateTime() {
+    const options = { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
+    const now = new Date();
+    // Создаем объект Date, соответствующий времени в Бухаре, используя смещение UTC+5
+    const bukharaTime = new Date(now.getTime() + (now.getTimezoneOffset() * 60000) + (5 * 3600000));
+    document.getElementById('current-time').textContent = bukharaTime.toLocaleTimeString('ru-RU', options);
+}
+
+// Обновляем время сразу после загрузки страницы
+updateTime();
+// Устанавливаем интервал для обновления времени каждую секунду
+setInterval(updateTime, 1000);
+</script>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const searchInput = document.querySelector("input[type='search']");
+
+    searchInput.addEventListener("input", function() {
+        const query = this.value;
+
+        fetch(`/search_posts/?q=${encodeURIComponent(query)}`)
+            .then(response => response.json())
+            .then(data => {
+                const resultsContainer = document.getElementById('search-results');
+                resultsContainer.innerHTML = ''; // Clear previous results
+
+                const posts = JSON.parse(data.results);
+
+                if (posts.length === 0) {
+                    resultsContainer.innerHTML = '<p>No results found.</p>';
+                } else {
+                    posts.forEach(item => {
+                        const post = item.fields;
+                        const postElement = document.createElement('div');
+                        postElement.classList.add('card', 'mb-3');
+                        postElement.style = 'width: 18rem;';
+                        postElement.innerHTML = `
+                            <div class="card-body">
+                                <h5 class="card-title">${post.title}</h5>
+                                <p class="card-text">${post.header}</p>
+                                <a href="/post/${item.pk}" class="btn btn-primary">Ko'proq o'qish</a>
+                            </div>
+                        `;
+                        resultsContainer.appendChild(postElement);
+                    });
+                }
+            })
+            .catch(error => console.error('Error fetching search results:', error));
+    });
+});
+</script>
+{% endblock content %}

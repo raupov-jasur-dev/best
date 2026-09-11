@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+.img-zoomin { transition: transform .5s ease; }
+.img-zoomin:hover { transform: scale(1.1); }
+.owl-nav button {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  background: #fff; color: #333; border: none; border-radius: 3px; padding: 10px;
+}
+.owl-nav .owl-prev { left: 10px; }
+.owl-nav .owl-next { right: 10px; }
+.comments-section { margin-top: 2rem; }
+.comment-item { border-bottom: 1px solid #eee; padding: 1rem 0; }
+</style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/OwlCarousel2/2.3.4/assets/owl.carousel.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/OwlCarousel2/2.3.4/assets/owl.theme.default.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/OwlCarousel2/2.3.4/owl.carousel.min.js"></script>
+
+{% include "include/header.html" %}
+
+<div class="container-fluid py-5">
+  <div class="container py-5">
+    {% if messages %}
+      {% for message in messages %}
+        <div class="alert alert-success">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+
+    <div class="row g-4">
+      <div class="col-lg-12">
+        <div class="mb-4">
+          <h1 class="h1 display-5">{{ queryset.header }}</h1>
+          <div class="text-muted">
+            {{ queryset.category.name }} · {{ queryset.published_date|date:"Y-m-d H:i" }} · {{ queryset.is_seen }} ko‘rish
+          </div>
+        </div>
+
+        {% if queryset.main_image %}
+        <div class="position-relative rounded overflow-hidden mb-3">
+          <img src="{{ queryset.main_image.url }}" class="img-zoomin img-fluid rounded w-100 h-50 object-fit-cover" alt="">
+          <div class="position-absolute text-white px-4 py-2 bg-primary rounded" style="top: 20px; right: 20px;">
+            {{ queryset.category.name }}
+          </div>
+        </div>
+        {% endif %}
+
+        {% if queryset.post_images.all %}
+        <div class="whats-carousel owl-carousel" id="custom-carousel">
+          {% for image in queryset.post_images.all %}
+            {% if image.image %}
+            <img class="img-zoomin" src="{{ image.image.url }}" alt="{{ queryset.header }}"
+                 style="height: 400px; width: 400px; object-fit: cover;">
+            {% endif %}
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        <p class="my-4">{{ queryset.title }}</p>
+        <p class="my-4">{{ queryset.description }}</p>
+
+        {% if queryset.video %}
+        <div class="video-container mb-4">
+          <video controls class="w-100 rounded" style="max-height: 520px;">
+            <source src="{{ queryset.video.url }}">
+            Brauzeringiz video formatini qo‘llab-quvvatlamaydi.
+          </video>
+        </div>
+        {% endif %}
+
+        <div class="comments-section">
+          <h3 class="mb-3">Izohlar ({{ comments|length }})</h3>
+
+          {% for item in comments %}
+          <div class="comment-item">
+            <strong>{{ item.author_name }}</strong>
+            <small class="text-muted ms-2">{{ item.published_date|date:"Y-m-d H:i" }}</small>
+            <p class="mb-0 mt-2">{{ item.comment }}</p>
+          </div>
+          {% empty %}
+          <p class="text-muted">Hali izoh yo‘q. Birinchi bo‘lib yozing.</p>
+          {% endfor %}
+
+          <h4 class="mt-4 mb-3">Izoh qoldirish</h4>
+          <form method="post" action="{% url 'post-detail' queryset.id %}">
+            {% csrf_token %}
+            <div class="mb-3">
+              <label class="form-label" for="{{ comment_form.author_name.id_for_label }}">Ism</label>
+              {{ comment_form.author_name }}
+              {% if comment_form.author_name.errors %}
+                <div class="text-danger">{{ comment_form.author_name.errors }}</div>
+              {% endif %}
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="{{ comment_form.comment.id_for_label }}">Izoh</label>
+              {{ comment_form.comment }}
+              {% if comment_form.comment.errors %}
+                <div class="text-danger">{{ comment_form.comment.errors }}</div>
+              {% endif %}
+            </div>
+            <button type="submit" class="btn btn-primary">Yuborish</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+$(document).ready(function() {
+  var $carousel = $('#custom-carousel');
+  if (!$carousel.length) return;
+
+  var imageCount = $carousel.find('img').length;
+  var carouselOptions = {
+    loop: imageCount > 2,
+    margin: 10,
+    nav: true,
+    dots: false,
+    responsive: {
+      0: { items: 1 },
+      600: { items: Math.min(2, imageCount || 1) },
+      1000: { items: Math.min(3, imageCount || 1) }
+    }
+  };
+  $carousel.owlCarousel(carouselOptions);
+});
+</script>
+{% endblock content %}

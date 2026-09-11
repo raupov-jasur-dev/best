@@ -1,0 +1,304 @@
+{% extends "base.html" %}
+
+{% block content %}
+{% include "include/header.html" %}
+
+<section id="hero-slider" class="hero-slider">
+  <div class="container-md" data-aos="fade-in">
+    <div class="row">
+      <div class="col-12">
+        <div class="swiper sliderFeaturedPosts">
+          <div class="swiper-wrapper">
+            {% for item in last_carousel %}
+            <div class="swiper-slide">
+              <a href="{% url 'post-detail' item.id %}" class="img-bg d-flex align-items-end img-zoomin"
+                 style="background-image: url({% if item.main_image %}{{ item.main_image.url }}{% endif %});">
+                <div class="img-bg-inner">
+                  <h2>{{ item.header }}</h2>
+                  <p>{{ item.title }}</p>
+                </div>
+              </a>
+            </div>
+            {% endfor %}
+          </div>
+          <div class="custom-swiper-button-next"><span class="bi-chevron-right"></span></div>
+          <div class="custom-swiper-button-prev"><span class="bi-chevron-left"></span></div>
+          <div class="swiper-pagination"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="posts" class="posts">
+  <div class="container" data-aos="fade-up">
+    <div class="section-header d-flex justify-content-between align-items-center mb-5">
+      <h2>So'ngi Yangiliklar</h2>
+      <div><a href="{% url 'post' %}" class="more">Barchasi</a></div>
+    </div>
+    <div class="row g-5">
+      <div class="col-lg-4">
+        {% if last_post %}
+        <div class="post-entry-1 lg">
+          {% if last_post.main_image %}
+          <a href="{% url 'post-detail' last_post.id %}">
+            <img src="{{ last_post.main_image.url }}" alt="" class="img-fluid">
+          </a>
+          {% endif %}
+          <div class="post-meta">
+            <span class="date">{{ last_post.category.name }}</span>
+            <span class="mx-1">&bullet;</span>
+            <span>{{ last_post.published_date|date:"Y-m-d" }}</span>
+          </div>
+          <h2><a href="{% url 'post-detail' last_post.id %}">{{ last_post.header }}</a></h2>
+          <p class="mb-4 d-block">{{ last_post.description|truncatechars:1200 }}</p>
+        </div>
+        {% endif %}
+      </div>
+
+      <div class="col-lg-8">
+        <div class="row g-5">
+          <div class="col-lg-4 border-start custom-border">
+            {% for item in random_seven_posts %}
+            <div class="post-entry-1">
+              {% if item.main_image %}
+              <a href="{% url 'post-detail' item.id %}">
+                <img src="{{ item.main_image.url }}" alt="" class="img-fluid">
+              </a>
+              {% endif %}
+              <div class="post-meta">
+                <span class="date">{{ item.category.name }}</span>
+                <span class="mx-1">&bullet;</span>
+                <span>{{ item.published_date|date:"Y-m-d" }}</span>
+              </div>
+              <h2><a href="{% url 'post-detail' item.id %}">{{ item.header|truncatechars:50 }}</a></h2>
+            </div>
+            {% endfor %}
+          </div>
+          <div class="col-lg-4 border-start custom-border">
+            {% for item in random_three_posts %}
+            <div class="post-entry-1">
+              {% if item.main_image %}
+              <a href="{% url 'post-detail' item.id %}">
+                <img src="{{ item.main_image.url }}" alt="" class="img-fluid">
+              </a>
+              {% endif %}
+              <div class="post-meta">
+                <span class="date">{{ item.category.name }}</span>
+                <span class="mx-1">&bullet;</span>
+                <span>{{ item.published_date|date:"Y-m-d" }}</span>
+              </div>
+              <h2><a href="{% url 'post-detail' item.id %}">{{ item.header|truncatechars:50 }}</a></h2>
+            </div>
+            {% endfor %}
+          </div>
+          <div class="col-lg-4">
+            <div class="trending">
+              <h3>Sara Xabarlar</h3>
+              <ul class="trending-post">
+                {% for item in random_posts %}
+                <li>
+                  <a href="{% url 'post-detail' item.id %}">
+                    <span class="number">{{ forloop.counter }}</span>
+                    <h3>{{ item.header }}</h3>
+                    <span class="author">{{ item.title }}</span>
+                  </a>
+                </li>
+                {% endfor %}
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="category-section">
+  <div class="container" data-aos="fade-up">
+    <div class="section-header d-flex justify-content-between align-items-center mb-5">
+      <h2>Dolzarb Xabarlar</h2>
+      <div><a href="{% url 'post' %}" class="more">Barchasi</a></div>
+    </div>
+
+    <div class="row">
+      <div class="col-md-9">
+        {% if trand_new %}
+        <div class="d-lg-flex post-entry-2">
+          {% if trand_new.main_image %}
+          <a href="{% url 'post-detail' trand_new.id %}" class="me-4 thumbnail mb-4 mb-lg-0 d-inline-block">
+            <img src="{{ trand_new.main_image.url }}" alt="" class="img-fluid">
+          </a>
+          {% endif %}
+          <div>
+            <div class="post-meta">
+              <span class="date">{{ trand_new.category.name }}</span>
+              <span class="mx-1">&bullet;</span>
+              <span>{{ trand_new.published_date|date:"Y-m-d" }}</span>
+            </div>
+            <h3><a href="{% url 'post-detail' trand_new.id %}">{{ trand_new.header }}</a></h3>
+            <p>{{ trand_new.description|truncatechars:1200 }}</p>
+          </div>
+        </div>
+        {% endif %}
+
+        <div class="row">
+          <div class="col-lg-4">
+            {% if trand_option_1 %}
+            <div class="post-entry-1 border-bottom">
+              {% if trand_option_1.main_image %}
+              <a href="{% url 'post-detail' trand_option_1.id %}">
+                <img src="{{ trand_option_1.main_image.url }}" alt="" class="img-fluid">
+              </a>
+              {% endif %}
+              <div class="post-meta">
+                <span class="date">{{ trand_option_1.category.name }}</span>
+                <span class="mx-1">&bullet;</span>
+                <span>{{ trand_option_1.published_date|date:"Y-m-d" }}</span>
+              </div>
+              <h2 class="mb-2"><a href="{% url 'post-detail' trand_option_1.id %}">{{ trand_option_1.header }}</a></h2>
+              <p class="mb-4 d-block">{{ trand_option_1.description|truncatechars:500 }}</p>
+            </div>
+            {% endif %}
+
+            {% if trand_option_2 %}
+            <div class="post-entry-1">
+              <div class="post-meta">
+                <span class="date">{{ trand_option_2.category.name }}</span>
+                <span class="mx-1">&bullet;</span>
+                <span>{{ trand_option_2.published_date|date:"Y-m-d" }}</span>
+              </div>
+              <h2 class="mb-2"><a href="{% url 'post-detail' trand_option_2.id %}">{{ trand_option_2.header }}</a></h2>
+              <span class="author mb-3 d-block">{{ trand_option_2.description|truncatechars:200 }}</span>
+            </div>
+            {% endif %}
+          </div>
+          <div class="col-lg-8">
+            {% if trand_option_3 %}
+            <div class="post-entry-1">
+              {% if trand_option_3.main_image %}
+              <a href="{% url 'post-detail' trand_option_3.id %}">
+                <img src="{{ trand_option_3.main_image.url }}" alt="" class="img-fluid">
+              </a>
+              {% endif %}
+              <div class="post-meta">
+                <span class="date">{{ trand_option_3.category.name }}</span>
+                <span class="mx-1">&bullet;</span>
+                <span>{{ trand_option_3.published_date|date:"Y-m-d" }}</span>
+              </div>
+              <h2 class="mb-2"><a href="{% url 'post-detail' trand_option_3.id %}">{{ trand_option_3.header }}</a></h2>
+              <p class="mb-4 d-block">{{ trand_option_3.description|truncatechars:500 }}</p>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-3">
+        {% for item in random_posts %}
+        <div class="post-entry-1 border-bottom">
+          <div class="post-meta">
+            <span class="date">{{ item.category.name }}</span>
+            <span class="mx-1">&bullet;</span>
+            <span>{{ item.published_date|date:"Y-m-d" }}</span>
+          </div>
+          <h2 class="mb-2"><a href="{% url 'post-detail' item.id %}">{{ item.header }}</a></h2>
+          <span class="author mb-3 d-block">{{ item.title }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="category-section">
+  <div class="container" data-aos="fade-up">
+    <div class="section-header d-flex justify-content-between align-items-center mb-5">
+      <h2>Buxoro Yangiliklari</h2>
+      <div><a href="{% url 'post' %}" class="more">Barchasi</a></div>
+    </div>
+
+    <div class="row">
+      <div class="col-md-9 order-md-2">
+        {% if buxoro %}
+        <div class="d-lg-flex post-entry-2">
+          {% if buxoro.main_image %}
+          <a href="{% url 'post-detail' buxoro.id %}" class="me-4 thumbnail d-inline-block mb-4 mb-lg-0">
+            <img src="{{ buxoro.main_image.url }}" alt="" class="img-fluid">
+          </a>
+          {% endif %}
+          <div>
+            <div class="post-meta">
+              <span class="date">{{ buxoro.category.name }}</span>
+              <span class="mx-1">&bullet;</span>
+              <span>{{ buxoro.published_date|date:"Y-m-d" }}</span>
+            </div>
+            <h3><a href="{% url 'post-detail' buxoro.id %}">{{ buxoro.header }}</a></h3>
+            <p>{{ buxoro.description|truncatechars:500 }}</p>
+            <div class="d-flex align-items-center author">
+              <div class="name">
+                <h3 class="m-0 p-0">{{ buxoro.title }}</h3>
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+
+        <div class="row">
+          <div class="col-lg-4">
+            {% if buxoro_1 %}
+            <div class="post-entry-1 border-bottom">
+              {% if buxoro_1.main_image %}
+              <a href="{% url 'post-detail' buxoro_1.id %}">
+                <img src="{{ buxoro_1.main_image.url }}" alt="" class="img-fluid">
+              </a>
+              {% endif %}
+              <div class="post-meta">
+                <span class="date">{{ buxoro_1.category.name }}</span>
+                <span class="mx-1">&bullet;</span>
+                <span>{{ buxoro_1.published_date|date:"Y-m-d" }}</span>
+              </div>
+              <h2 class="mb-2"><a href="{% url 'post-detail' buxoro_1.id %}">{{ buxoro_1.header }}</a></h2>
+              <span class="author mb-3 d-block">{{ buxoro_1.description|truncatechars:500 }}</span>
+              <p class="mb-4 d-block">{{ buxoro_1.title }}</p>
+            </div>
+            {% endif %}
+          </div>
+          <div class="col-lg-8">
+            {% if buxoro_3 %}
+            <div class="post-entry-1">
+              {% if buxoro_3.main_image %}
+              <a href="{% url 'post-detail' buxoro_3.id %}">
+                <img src="{{ buxoro_3.main_image.url }}" alt="" class="img-fluid">
+              </a>
+              {% endif %}
+              <div class="post-meta">
+                <span class="date">{{ buxoro_3.category.name }}</span>
+                <span class="mx-1">&bullet;</span>
+                <span>{{ buxoro_3.published_date|date:"Y-m-d" }}</span>
+              </div>
+              <h2 class="mb-2"><a href="{% url 'post-detail' buxoro_3.id %}">{{ buxoro_3.header }}</a></h2>
+              <span class="author mb-3 d-block">{{ buxoro_3.description|truncatechars:500 }}</span>
+              <p class="mb-4 d-block">{{ buxoro_3.title }}</p>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        {% for item in last_five_posts %}
+        <div class="post-entry-1 border-bottom">
+          <div class="post-meta">
+            <span class="date">{{ item.category.name }}</span>
+            <span class="mx-1">&bullet;</span>
+            <span>{{ item.published_date|date:"Y-m-d" }}</span>
+          </div>
+          <h2 class="mb-2"><a href="{% url 'post-detail' item.id %}">{{ item.header }}</a></h2>
+          <span class="author mb-3 d-block">{{ item.description|truncatechars:300 }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock content %}

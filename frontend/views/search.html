@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block content %}
+{% include "include/header.html" %}
+
+<div class="container py-5 mt-5">
+  <div class="section-header mb-4">
+    <h2>Qidiruv natijalari</h2>
+    {% if query %}
+      <p class="text-muted">"{{ query }}" bo‘yicha {{ page_obj.paginator.count }} ta natija</p>
+    {% else %}
+      <p class="text-muted">Qidiruv so‘zini kiriting</p>
+    {% endif %}
+  </div>
+
+  <div class="row">
+    {% for item in page_obj %}
+    <div class="col-md-4 mb-4">
+      <div class="post-entry-1 h-100">
+        {% if item.main_image %}
+        <a href="{% url 'post-detail' item.id %}">
+          <img src="{{ item.main_image.url }}" alt="" class="img-fluid">
+        </a>
+        {% endif %}
+        <div class="post-meta">
+          <span class="date">{{ item.category.name }}</span>
+          <span class="mx-1">&bullet;</span>
+          <span>{{ item.published_date|date:"Y-m-d" }}</span>
+        </div>
+        <h2><a href="{% url 'post-detail' item.id %}">{{ item.header|truncatechars:80 }}</a></h2>
+        <p>{{ item.title|truncatechars:140 }}</p>
+      </div>
+    </div>
+    {% empty %}
+    <div class="col-12">
+      <p>Hech narsa topilmadi.</p>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% if page_obj.has_other_pages %}
+  <nav>
+    <ul class="pagination">
+      {% if page_obj.has_previous %}
+      <li class="page-item"><a class="page-link" href="?q={{ query }}&page={{ page_obj.previous_page_number }}">Oldingi</a></li>
+      {% endif %}
+      <li class="page-item disabled"><span class="page-link">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span></li>
+      {% if page_obj.has_next %}
+      <li class="page-item"><a class="page-link" href="?q={{ query }}&page={{ page_obj.next_page_number }}">Keyingi</a></li>
+      {% endif %}
+    </ul>
+  </nav>
+  {% endif %}
+</div>
+{% endblock content %}
