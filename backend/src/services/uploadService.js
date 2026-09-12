@@ -1,14 +1,12 @@
 /**
- * Rasm yuklash:
- *  - freeimage  (tavsiya — Railway da ImgBB bloklangan bo‘lishi mumkin)
- *  - imgbb
- *  - cloudinary (video + rasm)
+ * Media upload — Catbox (asosiy), freeimage, imgbb, cloudinary
+ *
+ * Catbox: API kalit KERAK EMAS, rasm + video ishlaydi
+ * https://catbox.moe/tools.php
  *
  * Env:
- *   STORAGE_PROVIDER=freeimage | imgbb | cloudinary
- *   FREEIMAGE_API_KEY=...
- *   IMGBB_API_KEY=...
- *   CLOUDINARY_*
+ *   STORAGE_PROVIDER=catbox | freeimage | imgbb | cloudinary
+ *   CATBOX_USERHASH=   (ixtiyoriy — akkauntga bog‘lash)
  */
 const cloudinary = require('../config/cloudinary');
 const { Readable } = require('stream');
@@ -18,11 +16,12 @@ const BROWSER_UA =
 
 function getProvider() {
   const forced = (process.env.STORAGE_PROVIDER || '').toLowerCase().trim();
-  if (['freeimage', 'imgbb', 'cloudinary'].includes(forced)) return forced;
+  if (['catbox', 'freeimage', 'imgbb', 'cloudinary'].includes(forced)) return forced;
+  // Default: catbox (kalit kerak emas, Render/Railway da ishlaydi)
   if (process.env.FREEIMAGE_API_KEY) return 'freeimage';
   if (process.env.IMGBB_API_KEY) return 'imgbb';
   if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY) return 'cloudinary';
-  return null;
+  return 'catbox';
 }
 
 function fail(message, status = 400) {
@@ -31,16 +30,58 @@ function fail(message, status = 400) {
   return err;
 }
 
-/** freeimage.host — ImgBB ga o‘xshash API */
+/**
+ * Catbox.moe — anonymous yoki userhash bilan
+ * Rasm va video (max ~200MB)
+ */
+async function uploadToCatbox(file) {
+  if (!file?.buffer) return null;
+
+  const form = new FormData();
+  form.append('reqtype', 'fileupload');
+  if (process.env.CATBOX_USERHASH) {
+    form.append('userhash', process.env.CATBOX_USERHASH);
+  }
+  const blob = new Blob([file.buffer], {
+    type: file.mimetype || 'application/octet-stream'
+  });
+  form.append('fileToUpload', blob, file.originalname || 'upload.bin');
+
+  let res;
+  try {
+    res = await fetch('https://catbox.moe/user/api.php', {
+      method: 'POST',
+      headers: { 'User-Agent': BROWSER_UA },
+      body: form
+    });
+  } catch (e) {
+    throw fail('Catbox ulanish xatosi: ' + e.message, 502);
+  }
+
+  const text = (await res.text()).trim();
+  // Muvaffaqiyat: https://files.catbox.moe/xxxxx.ext
+  if (!res.ok || !/^https?:\/\//i.test(text)) {
+    throw fail(
+      'Catbox xato: ' + (text.slice(0, 200) || res.status) +
+        '. Fayl hajmini tekshiring yoki keyinroq qayta urinib ko‘ring.'
+    );
+  }
+
+  return {
+    url: text,
+    publicId: text,
+    provider: 'catbox'
+  };
+}
+
 async function uploadToFreeimage(file) {
   const key = process.env.FREEIMAGE_API_KEY;
-  if (!key) throw fail('FREEIMAGE_API_KEY sozlanmagan. https://freeimage.host/page/api dan oling.');
+  if (!key) throw fail('FREEIMAGE_API_KEY sozlanmagan');
 
-  const base64 = file.buffer.toString('base64');
   const body = new URLSearchParams();
   body.set('key', key);
   body.set('action', 'upload');
-  body.set('source', base64);
+  body.set('source', file.buffer.toString('base64'));
   body.set('format', 'json');
 
   const res = await fetch('https://freeimage.host/api/1/upload', {
@@ -52,69 +93,47 @@ async function uploadToFreeimage(file) {
     },
     body: body.toString()
   });
-
   const json = await res.json().catch(() => ({}));
-  // freeimage: status_code 200, success true, image.url
-  const ok = json.status_code === 200 || json.success === true || json.status_txt === 'OK';
   const url =
-    json?.image?.url ||
-    json?.image?.display_url ||
-    json?.data?.url ||
-    json?.data?.display_url ||
-    json?.url;
-
-  if (!ok || !url) {
-    const msg =
-      json?.error?.message ||
-      json?.status_txt ||
-      json?.error?.context ||
-      JSON.stringify(json).slice(0, 200) ||
-      'Freeimage upload failed';
+    json?.image?.url || json?.image?.display_url || json?.data?.url || json?.url;
+  if (!url) {
+    const msg = json?.error?.message || json?.status_txt || 'Freeimage failed';
+    if (/forbidden/i.test(String(msg))) {
+      throw fail('Freeimage bloklagan. STORAGE_PROVIDER=catbox qiling (kalit kerak emas).');
+    }
     throw fail('Freeimage: ' + msg);
   }
-
-  return {
-    url,
-    publicId: json?.image?.url_viewer || json?.image?.name || null,
-    provider: 'freeimage'
-  };
+  return { url, publicId: url, provider: 'freeimage' };
 }
 
-/** ImgBB — ba’zi cloud IP larni bloklaydi */
 async function uploadToImgBB(file) {
   const key = process.env.IMGBB_API_KEY;
-  if (!key) throw fail('IMGBB_API_KEY sozlanmagan.');
+  if (!key) throw fail('IMGBB_API_KEY sozlanmagan');
 
-  // Multipart + binary (base64 o‘rniga) — ba’zan yaxshiroq o‘tadi
   const form = new FormData();
   form.append('key', key);
-  const blob = new Blob([file.buffer], { type: file.mimetype || 'image/jpeg' });
-  form.append('image', blob, file.originalname || 'upload.jpg');
+  form.append(
+    'image',
+    new Blob([file.buffer], { type: file.mimetype || 'image/jpeg' }),
+    file.originalname || 'upload.jpg'
+  );
 
   const res = await fetch('https://api.imgbb.com/1/upload', {
     method: 'POST',
-    headers: {
-      'User-Agent': BROWSER_UA,
-      Accept: 'application/json'
-    },
+    headers: { 'User-Agent': BROWSER_UA, Accept: 'application/json' },
     body: form
   });
-
   const json = await res.json().catch(() => ({}));
   if (!json.success || !json.data) {
-    const msg = json?.error?.message || json?.status_txt || 'ImgBB upload failed';
-    // Aniq yordam
+    const msg = json?.error?.message || json?.status_txt || 'ImgBB failed';
     if (/forbidden/i.test(String(msg))) {
-      throw fail(
-        'ImgBB Railway serverini bloklagan. STORAGE_PROVIDER=freeimage qiling va FREEIMAGE_API_KEY qo‘ying (https://freeimage.host/page/api).'
-      );
+      throw fail('ImgBB bloklagan. STORAGE_PROVIDER=catbox qiling.');
     }
     throw fail('ImgBB: ' + msg);
   }
-
   return {
     url: json.data.display_url || json.data.url,
-    publicId: json.data.delete_url || json.data.id || null,
+    publicId: json.data.delete_url || json.data.id,
     provider: 'imgbb'
   };
 }
@@ -148,27 +167,18 @@ async function uploadToCloudinary(file, resourceType = 'image') {
 async function uploadImage(file) {
   if (!file) return null;
   const provider = getProvider();
-  if (!provider) {
-    throw fail(
-      'Rasm storage sozlanmagan. Railway Variables:\n' +
-        'STORAGE_PROVIDER=freeimage\n' +
-        'FREEIMAGE_API_KEY=...'
-    );
-  }
 
   try {
+    if (provider === 'catbox') return await uploadToCatbox(file);
     if (provider === 'freeimage') return await uploadToFreeimage(file);
     if (provider === 'imgbb') return await uploadToImgBB(file);
-    return await uploadToCloudinary(file, 'image');
+    if (provider === 'cloudinary') return await uploadToCloudinary(file, 'image');
+    return await uploadToCatbox(file);
   } catch (e) {
-    // ImgBB forbidden bo‘lsa — freeimage ga avtomatik fallback
-    if (
-      provider === 'imgbb' &&
-      process.env.FREEIMAGE_API_KEY &&
-      /forbidden|ImgBB/i.test(e.message || '')
-    ) {
-      console.warn('[upload] ImgBB failed, fallback to freeimage');
-      return uploadToFreeimage(file);
+    // Bloklangan provayder → catbox fallback
+    if (provider !== 'catbox' && /forbidden|blok/i.test(e.message || '')) {
+      console.warn('[upload] fallback → catbox:', e.message);
+      return uploadToCatbox(file);
     }
     throw e;
   }
@@ -176,12 +186,17 @@ async function uploadImage(file) {
 
 async function uploadVideo(file) {
   if (!file) return null;
-  if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY) {
-    return uploadToCloudinary(file, 'video');
+  const provider = getProvider();
+
+  // Video: catbox yoki cloudinary
+  if (provider === 'cloudinary' || (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && provider !== 'catbox')) {
+    try {
+      return await uploadToCloudinary(file, 'video');
+    } catch (e) {
+      console.warn('[upload] cloudinary video fail, try catbox');
+    }
   }
-  throw fail(
-    'Video yuklash uchun Cloudinary kerak. Hozircha video maydonini bo‘sh qoldiring — faqat rasm bilan saqlang.'
-  );
+  return uploadToCatbox(file);
 }
 
 async function deleteMedia(publicId, resourceType = 'image') {

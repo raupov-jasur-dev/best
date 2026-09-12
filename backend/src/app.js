@@ -59,6 +59,11 @@ app.use('/api', apiRoutes);
 // Optional: serve admin SPA from API host as fallback
 const staticPath = path.join(__dirname, '../../frontend/public');
 app.use('/static', express.static(staticPath));
+
+// Local uploads (STORAGE_PROVIDER=local)
+const uploadsPath = path.join(__dirname, '../../uploads');
+app.use('/uploads', express.static(uploadsPath));
+
 app.get('/admin*', (req, res) => {
   res.sendFile(path.join(staticPath, 'admin', 'index.html'), (err) => {
     if (err) res.status(404).json({ message: 'Admin panel not found' });
