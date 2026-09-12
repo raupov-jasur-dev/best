@@ -122,22 +122,37 @@ async function createNews(req, res, next) {
       return res.status(400).json({ success: false, message: 'Title and category are required' });
     }
 
+    // Kategoriya mavjudligini tekshirish
+    const cat = await Category.findByPk(parseInt(categoryId, 10));
+    if (!cat) {
+      return res.status(400).json({ success: false, message: 'Kategoriya topilmadi' });
+    }
+
     let mainImage = null, mainImagePublicId = null, video = null, videoPublicId = null;
 
-    if (req.files?.mainImage?.[0]) {
-      const up = await uploadImage(req.files.mainImage[0]);
-      mainImage = up.url;
-      mainImagePublicId = up.publicId;
-    }
-    if (req.files?.video?.[0]) {
-      const up = await uploadVideo(req.files.video[0]);
-      video = up.url;
-      videoPublicId = up.publicId;
+    try {
+      if (req.files?.mainImage?.[0]) {
+        const up = await uploadImage(req.files.mainImage[0]);
+        if (up) {
+          mainImage = up.url;
+          mainImagePublicId = up.publicId;
+        }
+      }
+      if (req.files?.video?.[0]) {
+        const up = await uploadVideo(req.files.video[0]);
+        if (up) {
+          video = up.url;
+          videoPublicId = up.publicId;
+        }
+      }
+    } catch (uploadErr) {
+      uploadErr.status = uploadErr.status || 400;
+      throw uploadErr;
     }
 
-    const finalStatus = publishAndTelegram === 'true' || publishAndTelegram === true ? 'published' : status;
+    const finalStatus = publishAndTelegram === 'true' || publishAndTelegram === true ? 'published' : (status || 'draft');
     const news = await News.create({
-      title,
+      title: String(title).trim(),
       slug: makeSlug(title),
       shortDescription: shortDescription || '',
       content: content || '',
@@ -146,7 +161,7 @@ async function createNews(req, res, next) {
       mainImagePublicId,
       video,
       videoPublicId,
-      status: finalStatus,
+      status: finalStatus === 'published' ? 'published' : 'draft',
       featured: featured === 'true' || featured === true,
       publishedAt: finalStatus === 'published' ? new Date() : null,
       telegramStatus: finalStatus === 'published' ? 'pending' : 'skipped'

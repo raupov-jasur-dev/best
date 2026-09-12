@@ -1,13 +1,6 @@
 /**
- * Media upload service
- * Supports: ImgBB (images) and Cloudinary (images + video)
- *
- * Env:
- *   STORAGE_PROVIDER=imgbb | cloudinary   (default: auto)
- *   IMGBB_API_KEY=...
- *   CLOUDINARY_CLOUD_NAME / API_KEY / API_SECRET
+ * ImgBB (rasm) + ixtiyoriy Cloudinary (video)
  */
-
 const cloudinary = require('../config/cloudinary');
 const { Readable } = require('stream');
 
@@ -16,37 +9,50 @@ function getProvider() {
   if (forced === 'imgbb' || forced === 'cloudinary') return forced;
   if (process.env.IMGBB_API_KEY) return 'imgbb';
   if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY) return 'cloudinary';
-  return 'imgbb'; // prefer imgbb if neither fully set
+  return null;
 }
 
-// ---------- ImgBB ----------
 async function uploadToImgBB(file) {
   const key = process.env.IMGBB_API_KEY;
   if (!key) {
-    throw new Error('IMGBB_API_KEY is not set in environment variables');
+    const err = new Error('IMGBB_API_KEY sozlanmagan. Railway Variables ga qo‘ying.');
+    err.status = 400;
+    throw err;
   }
-  if (!file || !file.buffer) {
-    return null;
-  }
+  if (!file?.buffer) return null;
 
+  // 1) base64 usuli
   const base64 = file.buffer.toString('base64');
-  const body = new URLSearchParams();
-  body.append('key', key);
-  body.append('image', base64);
+  const params = new URLSearchParams();
+  params.set('key', key);
+  params.set('image', base64);
   if (file.originalname) {
-    body.append('name', file.originalname.replace(/\.[^.]+$/, ''));
+    params.set('name', String(file.originalname).replace(/\.[^.]+$/, '').slice(0, 80));
   }
 
-  const res = await fetch('https://api.imgbb.com/1/upload', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: body.toString()
-  });
+  let res;
+  try {
+    res = await fetch('https://api.imgbb.com/1/upload', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params.toString()
+    });
+  } catch (e) {
+    const err = new Error('ImgBB ga ulanishda xato: ' + e.message);
+    err.status = 502;
+    throw err;
+  }
 
-  const json = await res.json();
-  if (!json.success || !json.data) {
-    const msg = json.error?.message || json.status_txt || 'ImgBB upload failed';
-    throw new Error(msg);
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok || !json.success || !json.data) {
+    const msg =
+      json?.error?.message ||
+      json?.status_txt ||
+      json?.error ||
+      `ImgBB xato (${res.status})`;
+    const err = new Error(String(msg));
+    err.status = 400;
+    throw err;
   }
 
   return {
@@ -56,14 +62,17 @@ async function uploadToImgBB(file) {
   };
 }
 
-// ---------- Cloudinary ----------
 function uploadBufferCloudinary(buffer, options = {}) {
   return new Promise((resolve, reject) => {
+    if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY) {
+      const err = new Error('Cloudinary sozlanmagan');
+      err.status = 400;
+      return reject(err);
+    }
     const stream = cloudinary.uploader.upload_stream(
       {
         folder: options.folder || 'bukhara-best',
-        resource_type: options.resource_type || 'auto',
-        ...options
+        resource_type: options.resource_type || 'auto'
       },
       (err, result) => {
         if (err) return reject(err);
@@ -75,7 +84,7 @@ function uploadBufferCloudinary(buffer, options = {}) {
 }
 
 async function uploadToCloudinary(file, resourceType = 'image', folder = 'bukhara-best') {
-  if (!file || !file.buffer) return null;
+  if (!file?.buffer) return null;
   const result = await uploadBufferCloudinary(file.buffer, {
     folder,
     resource_type: resourceType
@@ -87,59 +96,43 @@ async function uploadToCloudinary(file, resourceType = 'image', folder = 'bukhar
   };
 }
 
-// ---------- Public API ----------
-async function uploadImage(file, folder = 'bukhara-best/images') {
+async function uploadImage(file) {
   if (!file) return null;
   const provider = getProvider();
-
-  if (provider === 'imgbb') {
-    return uploadToImgBB(file);
+  if (!provider) {
+    const err = new Error(
+      'Rasm yuklash sozlanmagan. Railway ga IMGBB_API_KEY qo‘ying (STORAGE_PROVIDER=imgbb).'
+    );
+    err.status = 400;
+    throw err;
   }
-  return uploadToCloudinary(file, 'image', folder);
+  if (provider === 'imgbb') return uploadToImgBB(file);
+  return uploadToCloudinary(file, 'image');
 }
 
-async function uploadVideo(file, folder = 'bukhara-best/videos') {
+async function uploadVideo(file) {
   if (!file) return null;
-  const provider = getProvider();
-
-  // ImgBB does not support video — try Cloudinary if configured, else skip with clear error
-  if (provider === 'imgbb') {
-    if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY) {
-      return uploadToCloudinary(file, 'video', folder);
-    }
-    // Fallback: store nothing for video, or throw soft message
-    console.warn('Video upload: ImgBB does not support video. Configure Cloudinary or skip video.');
-    throw new Error(
-      'Video yuklash ImgBB da ishlamaydi. Faqat rasm yuklang yoki Cloudinary sozlang.'
-    );
+  // Video: Cloudinary bo'lsa undan, aks holda aniq xabar
+  if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY) {
+    return uploadToCloudinary(file, 'video');
   }
-  return uploadToCloudinary(file, 'video', folder);
+  const err = new Error(
+    'Video yuklash uchun Cloudinary kerak. Hozircha faqat rasm yuklang yoki video maydonini bo‘sh qoldiring.'
+  );
+  err.status = 400;
+  throw err;
 }
 
 async function deleteMedia(publicId, resourceType = 'image') {
   if (!publicId) return;
-  // ImgBB delete_url is a full URL — optional, often not critical
-  if (String(publicId).startsWith('http') && String(publicId).includes('imgbb')) {
-    try {
-      await fetch(publicId);
-    } catch (e) {
-      console.error('ImgBB delete skip:', e.message);
-    }
-    return;
-  }
-  // Cloudinary
+  if (String(publicId).startsWith('http')) return;
   try {
     if (process.env.CLOUDINARY_CLOUD_NAME) {
       await cloudinary.uploader.destroy(publicId, { resource_type: resourceType });
     }
   } catch (e) {
-    console.error('Cloudinary delete error:', e.message);
+    console.error('deleteMedia:', e.message);
   }
 }
 
-module.exports = {
-  uploadImage,
-  uploadVideo,
-  deleteMedia,
-  getProvider
-};
+module.exports = { uploadImage, uploadVideo, deleteMedia, getProvider };

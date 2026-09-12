@@ -1,22 +1,35 @@
 const { Category, News } = require('../models');
-const { makeSlug } = require('../utils/helpers');
 const slugify = require('slugify');
-const { uploadImage, deleteMedia } = require('../services/uploadService');
+const { uploadImage } = require('../services/uploadService');
+const { sequelize } = require('../models');
 
 async function listCategories(req, res, next) {
   try {
     const cats = await Category.findAll({
-      attributes: {
-        include: [
-          [
-            require('sequelize').literal('(SELECT COUNT(*) FROM news WHERE news.category_id = "Category".id AND news.status = \'published\')'),
-            'postsCount'
-          ]
-        ]
-      },
-      order: [['id', 'ASC']]
+      order: [['id', 'ASC']],
+      raw: false
     });
-    res.json({ success: true, data: cats });
+
+    // postsCount ni alohida hisoblash (PostgreSQL mos)
+    const counts = await News.findAll({
+      attributes: [
+        'categoryId',
+        [sequelize.fn('COUNT', sequelize.col('id')), 'cnt']
+      ],
+      where: { status: 'published' },
+      group: ['categoryId'],
+      raw: true
+    });
+    const map = {};
+    counts.forEach((r) => { map[r.categoryId] = parseInt(r.cnt, 10) || 0; });
+
+    const data = cats.map((c) => {
+      const j = c.toJSON();
+      j.postsCount = map[c.id] || 0;
+      return j;
+    });
+
+    res.json({ success: true, data });
   } catch (err) {
     next(err);
   }
@@ -34,19 +47,24 @@ async function getCategory(req, res, next) {
 
 async function createCategory(req, res, next) {
   try {
-    const { name, description } = req.body;
+    const name = (req.body.name || '').trim();
+    const description = (req.body.description || '').trim() || null;
     if (!name) return res.status(400).json({ success: false, message: 'Name required' });
+
     let icon = null;
     if (req.file) {
       const up = await uploadImage(req.file, 'bukhara-best/categories');
       icon = up.url;
     }
-    const cat = await Category.create({
-      name,
-      slug: slugify(name, { lower: true, strict: true }),
-      description: description || null,
-      icon
-    });
+
+    const baseSlug = slugify(name, { lower: true, strict: true }) || 'category';
+    let slug = baseSlug;
+    let i = 1;
+    while (await Category.findOne({ where: { slug } })) {
+      slug = `${baseSlug}-${i++}`;
+    }
+
+    const cat = await Category.create({ name, slug, description, icon });
     res.status(201).json({ success: true, data: cat });
   } catch (err) {
     next(err);
@@ -57,12 +75,14 @@ async function updateCategory(req, res, next) {
   try {
     const cat = await Category.findByPk(req.params.id);
     if (!cat) return res.status(404).json({ success: false, message: 'Not found' });
-    const { name, description } = req.body;
+    const name = req.body.name !== undefined ? String(req.body.name).trim() : null;
+    const description = req.body.description !== undefined ? String(req.body.description).trim() : undefined;
     if (name) {
       cat.name = name;
-      cat.slug = slugify(name, { lower: true, strict: true });
+      const baseSlug = slugify(name, { lower: true, strict: true }) || cat.slug;
+      cat.slug = baseSlug;
     }
-    if (description !== undefined) cat.description = description;
+    if (description !== undefined) cat.description = description || null;
     if (req.file) {
       const up = await uploadImage(req.file, 'bukhara-best/categories');
       cat.icon = up.url;
@@ -80,7 +100,10 @@ async function deleteCategory(req, res, next) {
     if (!cat) return res.status(404).json({ success: false, message: 'Not found' });
     const count = await News.count({ where: { categoryId: cat.id } });
     if (count > 0) {
-      return res.status(400).json({ success: false, message: 'Category has news, cannot delete' });
+      return res.status(400).json({
+        success: false,
+        message: `Bu kategoriyada ${count} ta yangilik bor. Avval yangiliklarni boshqa kategoriyaga o‘tkazing.`
+      });
     }
     await cat.destroy();
     res.json({ success: true, message: 'Deleted' });

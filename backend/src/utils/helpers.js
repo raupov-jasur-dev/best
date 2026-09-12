@@ -1,7 +1,16 @@
 const slugify = require('slugify');
 
 function makeSlug(title) {
-  return slugify(title || 'news', { lower: true, strict: true }) + '-' + Date.now().toString(36);
+  let base = slugify(String(title || 'news'), {
+    lower: true,
+    strict: true,
+    locale: 'ru'
+  });
+  // Agar faqat kirill/bo'sh bo'lsa — fallback
+  if (!base || base.length < 2) {
+    base = 'news';
+  }
+  return base.slice(0, 80) + '-' + Date.now().toString(36);
 }
 
 function paginate(query, page = 1, limit = 9) {

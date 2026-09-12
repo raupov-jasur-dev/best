@@ -28,7 +28,7 @@
       const app = document.getElementById('app');
       try {
         const [newsRes, catRes] = await Promise.all([
-          BB.api('/news?limit=24'),
+          BB.api('/news?limit=40'),
           BB.api('/categories')
         ]);
         const news = newsRes.data || [];
@@ -94,6 +94,25 @@
             </div>
           </a>`).join('');
 
+        // Har bir kategoriya uchun 3 tadan yangilik bloki
+        let catBlocksHtml = '';
+        for (const c of cats.slice(0, 4)) {
+          const items = news.filter(n => n.category && String(n.category.id) === String(c.id)).slice(0, 3);
+          if (!items.length) continue;
+          catBlocksHtml += `
+            <section class="section" style="padding-top:8px;padding-bottom:8px">
+              <div class="container">
+                <div class="section-title">
+                  <h2>${BB.escape(c.name)}</h2>
+                  <a href="/category.html?id=${c.id}">Barchasi →</a>
+                </div>
+                <div class="news-grid">
+                  ${items.map(n => BB.cardHtml(n, { showExcerpt: true })).join('')}
+                </div>
+              </div>
+            </section>`;
+        }
+
         app.innerHTML = `
           <section class="section">
             <div class="container">${heroHtml}</div>
@@ -124,7 +143,8 @@
                 </aside>
               </div>
             </div>
-          </section>`;
+          </section>
+          ${catBlocksHtml}`;
 
         loading.style.display = 'none';
         app.style.display = 'block';
