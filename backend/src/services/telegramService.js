@@ -1,4 +1,10 @@
 const config = require('../config');
+const FormData = require('form-data');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+const { pipeline } = require('stream/promises');
+const { Readable } = require('stream');
 
 const CAPTION_LIMIT = 1024;
 
@@ -22,7 +28,6 @@ async function sendToTelegram(news) {
     let result;
 
     if (news.video) {
-      // Video — fayl sifatida emas, playable video sifatida
       result = await sendVideoProperly(token, chatId, news.video, caption);
     } else if (news.mainImage) {
       result = await sendPhotoProperly(token, chatId, news.mainImage, caption);
@@ -54,61 +59,94 @@ async function sendToTelegram(news) {
 }
 
 /**
- * Video ni Telegram da PLAYER sifatida yuborish.
- * URL orqali ba'zan "file" bo'lib ketadi — shuning uchun
- * avval faylni yuklab, multipart sendVideo qilamiz.
+ * Video ni Telegram player sifatida yuborish (qora ekran / file bo'lmasligi uchun)
+ * form-data + vaqtinchalik fayl — Node da eng ishonchli usul
  */
 async function sendVideoProperly(token, chatId, videoUrl, caption) {
-  // 1) URL dan video yuklab olish
+  let tmpPath = null;
   try {
     const fileRes = await fetch(videoUrl, {
       headers: {
         'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
-      }
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        Accept: '*/*'
+      },
+      redirect: 'follow'
     });
-    if (fileRes.ok) {
-      const buf = Buffer.from(await fileRes.arrayBuffer());
-      // Telegram sendVideo limit ~50MB bot API
-      if (buf.length > 0 && buf.length <= 49 * 1024 * 1024) {
-        const filename = guessFilename(videoUrl, 'video.mp4');
-        const form = new FormData();
-        form.append('chat_id', String(chatId));
-        form.append('caption', caption.slice(0, CAPTION_LIMIT));
-        form.append('parse_mode', 'HTML');
-        form.append('supports_streaming', 'true');
-        form.append('video', new Blob([buf], { type: mimeFromName(filename) }), filename);
 
-        const res = await fetch(`https://api.telegram.org/bot${token}/sendVideo`, {
-          method: 'POST',
-          body: form
-        });
-        const json = await res.json();
-        if (json.ok) return json;
-        console.warn('[telegram] multipart sendVideo failed:', json.description);
-      }
+    if (!fileRes.ok) {
+      throw new Error('Video yuklab bo‘lmadi: HTTP ' + fileRes.status);
     }
-  } catch (e) {
-    console.warn('[telegram] download video failed:', e.message);
-  }
 
-  // 2) Fallback — URL orqali sendVideo (ba'zan ishlaydi)
-  const res = await fetch(`https://api.telegram.org/bot${token}/sendVideo`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      chat_id: chatId,
-      video: videoUrl,
-      caption: caption.slice(0, CAPTION_LIMIT),
-      parse_mode: 'HTML',
-      supports_streaming: true
-    })
-  });
-  return res.json();
+    const buf = Buffer.from(await fileRes.arrayBuffer());
+    if (!buf.length) throw new Error('Video fayl bo‘sh');
+
+    if (buf.length > 49 * 1024 * 1024) {
+      throw new Error('Video 50MB dan katta — Telegram bot limiti');
+    }
+
+    // HTML xato sahifa kelganmi?
+    const head = buf.slice(0, 200).toString('utf8');
+    if (/<!DOCTYPE|<html/i.test(head)) {
+      throw new Error('Video URL dan HTML qaytdi, media emas');
+    }
+
+    const filename = forceVideoFilename(videoUrl, buf);
+    tmpPath = path.join(os.tmpdir(), `bb-tg-${Date.now()}-${filename}`);
+    fs.writeFileSync(tmpPath, buf);
+
+    const form = new FormData();
+    form.append('chat_id', String(chatId));
+    form.append('caption', caption.slice(0, CAPTION_LIMIT));
+    form.append('parse_mode', 'HTML');
+    form.append('supports_streaming', 'true');
+    form.append('video', fs.createReadStream(tmpPath), {
+      filename,
+      contentType: mimeFromName(filename),
+      knownLength: buf.length
+    });
+
+    const json = await submitForm(`https://api.telegram.org/bot${token}/sendVideo`, form);
+    if (json.ok) return json;
+
+    console.warn('[telegram] form-data sendVideo failed:', json.description);
+
+    // Fallback: URL orqali
+    const res2 = await fetch(`https://api.telegram.org/bot${token}/sendVideo`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId,
+        video: videoUrl,
+        caption: caption.slice(0, CAPTION_LIMIT),
+        parse_mode: 'HTML',
+        supports_streaming: true
+      })
+    });
+    return res2.json();
+  } catch (e) {
+    console.warn('[telegram] sendVideoProperly error:', e.message);
+    // Oxirgi urinish — URL
+    const res = await fetch(`https://api.telegram.org/bot${token}/sendVideo`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId,
+        video: videoUrl,
+        caption: caption.slice(0, CAPTION_LIMIT),
+        parse_mode: 'HTML',
+        supports_streaming: true
+      })
+    });
+    return res.json();
+  } finally {
+    if (tmpPath) {
+      try { fs.unlinkSync(tmpPath); } catch {}
+    }
+  }
 }
 
 async function sendPhotoProperly(token, chatId, photoUrl, caption) {
-  // Avval URL (oddiy va tez)
   let res = await fetch(`https://api.telegram.org/bot${token}/sendPhoto`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -122,7 +160,7 @@ async function sendPhotoProperly(token, chatId, photoUrl, caption) {
   let json = await res.json();
   if (json.ok) return json;
 
-  // Fallback — fayl sifatida yuklash
+  // Fallback multipart
   try {
     const fileRes = await fetch(photoUrl);
     if (!fileRes.ok) return json;
@@ -132,24 +170,58 @@ async function sendPhotoProperly(token, chatId, photoUrl, caption) {
     form.append('chat_id', String(chatId));
     form.append('caption', caption.slice(0, CAPTION_LIMIT));
     form.append('parse_mode', 'HTML');
-    form.append('photo', new Blob([buf], { type: mimeFromName(filename) }), filename);
-    res = await fetch(`https://api.telegram.org/bot${token}/sendPhoto`, {
-      method: 'POST',
-      body: form
+    form.append('photo', buf, {
+      filename,
+      contentType: mimeFromName(filename),
+      knownLength: buf.length
     });
-    return res.json();
+    return await submitForm(`https://api.telegram.org/bot${token}/sendPhoto`, form);
   } catch {
     return json;
   }
 }
 
+function submitForm(url, form) {
+  return new Promise((resolve, reject) => {
+    form.submit(url, (err, res) => {
+      if (err) return reject(err);
+      let data = '';
+      res.on('data', (c) => (data += c));
+      res.on('end', () => {
+        try {
+          resolve(JSON.parse(data));
+        } catch {
+          resolve({ ok: false, description: data.slice(0, 300) });
+        }
+      });
+      res.on('error', reject);
+    });
+  });
+}
+
+/** MP4/WebM magic bytes asosida to'g'ri kengaytma */
+function forceVideoFilename(url, buf) {
+  // MP4: ....ftyp
+  if (buf.length > 12 && buf.slice(4, 8).toString('ascii') === 'ftyp') {
+    return 'video.mp4';
+  }
+  // WebM / MKV: 0x1A45DFA3
+  if (buf.length > 4 && buf[0] === 0x1a && buf[1] === 0x45 && buf[2] === 0xdf && buf[3] === 0xa3) {
+    return 'video.webm';
+  }
+  const fromUrl = guessFilename(url, '');
+  if (/\.(mp4|webm|mov)$/i.test(fromUrl)) return fromUrl;
+  // Default — Telegram eng yaxshi mp4 ni o'ynatadi
+  return 'video.mp4';
+}
+
 function guessFilename(url, fallback) {
   try {
     const u = new URL(url);
-    const base = u.pathname.split('/').pop() || '';
-    if (/\.(mp4|webm|mov|mkv|avi|jpg|jpeg|png|webp|gif)$/i.test(base)) return base;
+    const base = (u.pathname.split('/').pop() || '').split('?')[0];
+    if (base && base.includes('.')) return base;
   } catch {}
-  return fallback;
+  return fallback || 'file.bin';
 }
 
 function mimeFromName(name) {
@@ -166,30 +238,21 @@ function mimeFromName(name) {
 
 function buildCaption(news, detailUrl) {
   const lines = [];
-
   const catName = news.category?.name || news.Category?.name;
-  if (catName) {
-    lines.push(`#${toHashtag(catName)}`);
-  }
-
+  if (catName) lines.push(`#${toHashtag(catName)}`);
   lines.push('');
 
   let body = (news.shortDescription || news.content || news.title || '').replace(/\s+/g, ' ').trim();
-  const footer = buildFooter(detailUrl);
-  const reserved = footer.length + 30;
-  const maxBody = Math.max(60, CAPTION_LIMIT - reserved);
-  if (body.length > maxBody - 20) {
-    body = body.slice(0, maxBody - 20).trim() + '…';
-  }
+  const footer = buildFooter();
+  const maxBody = Math.max(60, CAPTION_LIMIT - footer.length - 30);
+  if (body.length > maxBody - 20) body = body.slice(0, maxBody - 20).trim() + '…';
 
   lines.push(`${escapeHtml(body)} <a href="${escapeAttr(detailUrl)}">Batafsil</a>`);
   lines.push('');
   lines.push(footer);
 
   let caption = lines.join('\n');
-  if (caption.length > CAPTION_LIMIT) {
-    caption = caption.slice(0, CAPTION_LIMIT - 1) + '…';
-  }
+  if (caption.length > CAPTION_LIMIT) caption = caption.slice(0, CAPTION_LIMIT - 1) + '…';
   return caption;
 }
 
@@ -201,7 +264,6 @@ function buildFooter() {
     'https://www.facebook.com/groups/716578230428961/?ref=share&mibextid=NSMWBT';
   const youtube = config.socialYoutube || 'https://www.youtube.com/@bukharabest2436';
   const site = config.socialSite || config.siteBaseUrl || 'https://bukharabest.uz';
-
   return [
     link('Telegram', telegram),
     link('Instagram', instagram),
@@ -225,17 +287,11 @@ function toHashtag(name) {
 }
 
 function escapeHtml(text) {
-  return String(text)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
+  return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 function escapeAttr(text) {
-  return String(text)
-    .replace(/&/g, '&amp;')
-    .replace(/"/g, '&quot;')
-    .replace(/</g, '&lt;');
+  return String(text).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
 }
 
 async function sendMessage(token, chatId, text) {
