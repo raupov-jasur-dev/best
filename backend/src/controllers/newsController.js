@@ -4,6 +4,14 @@ const { makeSlug, paginate } = require('../utils/helpers');
 const { uploadImage, uploadVideo, deleteMedia } = require('../services/uploadService');
 const { sendToTelegram } = require('../services/telegramService');
 
+async function newsForTelegram(idOrInstance) {
+  const id = typeof idOrInstance === 'object' ? idOrInstance.id : idOrInstance;
+  return News.findByPk(id, {
+    include: [{ model: Category, as: 'category', attributes: ['id', 'name'] }]
+  });
+}
+
+
 // Public
 async function listNews(req, res, next) {
   try {
@@ -182,7 +190,8 @@ async function createNews(req, res, next) {
 
     // Telegram if publish
     if (finalStatus === 'published') {
-      const tg = await sendToTelegram(news);
+      const tgNews = await newsForTelegram(news);
+      const tg = await sendToTelegram(tgNews || news);
       await news.update({
         telegramStatus: tg.status,
         telegramMessageId: tg.messageId || null,
@@ -260,7 +269,8 @@ async function updateNews(req, res, next) {
     }
 
     if (shouldPublish && news.telegramStatus !== 'published') {
-      const tg = await sendToTelegram(news);
+      const tgNews = await newsForTelegram(news);
+      const tg = await sendToTelegram(tgNews || news);
       await news.update({
         telegramStatus: tg.status,
         telegramMessageId: tg.messageId || null,
@@ -301,7 +311,8 @@ async function retryTelegram(req, res, next) {
     if (news.status !== 'published') {
       return res.status(400).json({ success: false, message: 'News must be published first' });
     }
-    const tg = await sendToTelegram(news);
+    const tgNews = await newsForTelegram(news);
+      const tg = await sendToTelegram(tgNews || news);
     await news.update({
       telegramStatus: tg.status,
       telegramMessageId: tg.messageId || null,
@@ -321,7 +332,8 @@ async function publishNews(req, res, next) {
     news.status = 'published';
     if (!news.publishedAt) news.publishedAt = new Date();
     await news.save();
-    const tg = await sendToTelegram(news);
+    const tgNews = await newsForTelegram(news);
+      const tg = await sendToTelegram(tgNews || news);
     await news.update({
       telegramStatus: tg.status,
       telegramMessageId: tg.messageId || null,
