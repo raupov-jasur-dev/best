@@ -215,3 +215,19 @@ Brauzer: http://localhost:5173
 4. Cloudinary o‘zgaruvchilarini bo‘sh qoldirish mumkin
 
 **Eslatma:** ImgBB faqat **rasm** yuklaydi. Video kerak bo‘lsa Cloudinary ham sozlang.
+
+---
+
+## Admin login (Railway Variables — script kerak emas)
+
+Railway → Variables ga qo‘ying:
+
+```
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=SizningKuchliParolingiz
+```
+
+Server qayta ishga tushganda (Redeploy) admin **avtomatik** yaratiladi yoki paroli yangilanadi.
+
+Admin panel: `https://sizning-frontend.vercel.app/admin/`
+Login: `ADMIN_USERNAME` / `ADMIN_PASSWORD`
