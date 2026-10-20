@@ -5,10 +5,10 @@ const { User } = require('../models');
 async function login(req, res, next) {
   try {
     const { username, password } = req.body;
-    if (!username || !password) {
+    if (typeof username !== 'string' || typeof password !== 'string' || !username.trim() || password.length > 200 || username.length > 100) {
       return res.status(400).json({ success: false, message: 'Username and password required' });
     }
-    const user = await User.findOne({ where: { username } });
+    const user = await User.findOne({ where: { username: username.trim() } });
     if (!user || !(await user.comparePassword(password))) {
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }

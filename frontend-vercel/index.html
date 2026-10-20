@@ -1,161 +1,36 @@
 <!DOCTYPE html>
 <html lang="uz">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Bukhara Best — Yangiliklar portali</title>
-  <meta name="description" content="Bukhara Best — Buxoro va O‘zbekiston yangiliklari">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
-  <link href="/assets/css/portal.css" rel="stylesheet">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#f6f4ee">
+<title>Buxoro. O‘zbekiston. Dunyo. — Buxara Best</title>
+<meta name="description" content="Buxara Best — Buxoro, O‘zbekiston va dunyodagi voqealar. Eng muhim xabarlar bir manzilda.">
+<meta property="og:site_name" content="Buxara Best">
+<meta property="og:title" content="Buxoro. O‘zbekiston. Dunyo. — Buxara Best">
+<meta property="og:description" content="Buxara Best — Buxoro, O‘zbekiston va dunyodagi voqealar. Eng muhim xabarlar bir manzilda.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://bukharabest.vercel.app">
+<meta property="og:image" content="https://bukharabest.vercel.app/assets/brand/social.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://bukharabest.vercel.app">
+<link rel="icon" type="image/svg+xml" href="/assets/brand/favicon.svg">
+<link rel="preload" href="/assets/fonts/editorial-3.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/assets/fonts/editorial-11.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/assets/fonts/editorial-7.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/assets/css/fonts.css">
+<link rel="stylesheet" href="/assets/css/portal.css">
+<link rel="stylesheet" href="/assets/css/editorial.css">
+<script src="/config.js" defer></script>
+<script src="/assets/js/api.js" defer></script>
+<script src="/assets/js/layout.js" defer></script>
+<script src="/assets/js/public.js" defer></script>
 </head>
-<body>
-  <div id="header"></div>
-  <main>
-    <div id="loading" class="loading-wrap"><div class="spinner"></div><div>Yuklanmoqda…</div></div>
-    <div id="app" class="d-none" style="display:none"></div>
-  </main>
-  <div id="footer"></div>
-
-  <script src="/config.js"></script>
-  <script src="/assets/js/api.js"></script>
-  <script src="/assets/js/layout.js"></script>
-  <script>
-    async function init() {
-      const loading = document.getElementById('loading');
-      const app = document.getElementById('app');
-      try {
-        const [newsRes, catRes] = await Promise.all([
-          BB.api('/news?limit=40'),
-          BB.api('/categories')
-        ]);
-        const news = newsRes.data || [];
-        const cats = catRes.data || [];
-
-        document.getElementById('header').innerHTML = BB.renderHeader(cats, 'home');
-        document.getElementById('footer').innerHTML = BB.renderFooter(cats);
-        BB.bindHeader();
-
-        const featured = news[0];
-        const latestSide = news.slice(1, 6);
-        const gridNews = news.slice(1, 10);
-        const popular = [...news].sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 6);
-
-        let heroHtml = '';
-        if (featured) {
-          heroHtml = `
-          <div class="hero-grid">
-            <article class="featured">
-              ${featured.mainImage
-                ? `<img class="featured-img" src="${BB.escape(featured.mainImage)}" alt="">`
-                : `<div class="featured-img" style="background:#1c3550"></div>`}
-              <div class="featured-overlay">
-                ${featured.category ? `<span class="badge-cat on-dark">${BB.escape(featured.category.name)}</span>` : ''}
-                <h1>${BB.escape(featured.title)}</h1>
-                <p>${BB.escape(BB.excerpt(featured.shortDescription || featured.content, 160))}</p>
-                <div class="meta">
-                  <span><i class="bi bi-clock"></i> ${BB.formatDate(featured.publishedAt)}</span>
-                  <span class="dot"><i class="bi bi-eye"></i> ${featured.views || 0}</span>
-                </div>
-              </div>
-              <a class="stretch" href="/post.html?id=${featured.id}" aria-label="${BB.escape(featured.title)}"></a>
-            </article>
-            <aside class="latest-panel">
-              <div class="latest-panel-head">So‘nggi yangiliklar</div>
-              ${latestSide.map(n => `
-                <a class="latest-item" href="/post.html?id=${n.id}">
-                  ${n.mainImage
-                    ? `<img class="latest-thumb" src="${BB.escape(n.mainImage)}" alt="" loading="lazy">`
-                    : `<div class="latest-thumb"></div>`}
-                  <div>
-                    ${n.category ? `<span class="badge-cat">${BB.escape(n.category.name)}</span>` : ''}
-                    <h3>${BB.escape(n.title)}</h3>
-                    <div class="meta"><span>${BB.formatDate(n.publishedAt)}</span></div>
-                  </div>
-                </a>`).join('') || '<div class="empty-state">Hozircha yangilik yo‘q</div>'}
-            </aside>
-          </div>`;
-        } else {
-          heroHtml = `<div class="empty-state">Hozircha nashr qilingan yangiliklar yo‘q</div>`;
-        }
-
-        const gridHtml = gridNews.map((n, i) =>
-          BB.cardHtml(n, { large: i === 0, showExcerpt: i === 0 })
-        ).join('');
-
-        const popularHtml = popular.map((n, i) => `
-          <a class="popular-item" href="/post.html?id=${n.id}">
-            <span class="popular-num">${String(i + 1).padStart(2, '0')}</span>
-            <div>
-              <h4>${BB.escape(n.title)}</h4>
-              <div class="meta"><span><i class="bi bi-eye"></i> ${n.views || 0}</span></div>
-            </div>
-          </a>`).join('');
-
-        // Har bir kategoriya uchun 3 tadan yangilik bloki
-        let catBlocksHtml = '';
-        for (const c of cats.slice(0, 4)) {
-          const items = news.filter(n => n.category && String(n.category.id) === String(c.id)).slice(0, 3);
-          if (!items.length) continue;
-          catBlocksHtml += `
-            <section class="section" style="padding-top:8px;padding-bottom:8px">
-              <div class="container">
-                <div class="section-title">
-                  <h2>${BB.escape(c.name)}</h2>
-                  <a href="/category.html?id=${c.id}">Barchasi →</a>
-                </div>
-                <div class="news-grid">
-                  ${items.map(n => BB.cardHtml(n, { showExcerpt: true })).join('')}
-                </div>
-              </div>
-            </section>`;
-        }
-
-        app.innerHTML = `
-          <section class="section">
-            <div class="container">${heroHtml}</div>
-          </section>
-          <section class="section" style="padding-top:8px">
-            <div class="container">
-              <div class="layout-2col">
-                <div>
-                  <div class="section-title">
-                    <h2>Asosiy yangiliklar</h2>
-                    <a href="/search.html">Barchasi →</a>
-                  </div>
-                  <div class="news-grid">${gridHtml || '<div class="empty-state">Yangiliklar yo‘q</div>'}</div>
-                </div>
-                <aside>
-                  <div class="sidebar-block">
-                    <div class="sidebar-block-head">Ommabop</div>
-                    ${popularHtml || '<div class="empty-state">—</div>'}
-                  </div>
-                  <div class="sidebar-block">
-                    <div class="sidebar-block-head">Kategoriyalar</div>
-                    ${cats.map(c => `
-                      <a class="popular-item" href="/category.html?id=${c.id}" style="grid-template-columns:1fr auto">
-                        <h4 style="margin:0">${BB.escape(c.name)}</h4>
-                        <span class="meta">${c.postsCount != null ? c.postsCount : ''}</span>
-                      </a>`).join('') || '<div class="empty-state">—</div>'}
-                  </div>
-                </aside>
-              </div>
-            </div>
-          </section>
-          ${catBlocksHtml}`;
-
-        loading.style.display = 'none';
-        app.style.display = 'block';
-      } catch (e) {
-        loading.innerHTML = `<div class="container"><div class="alert alert-warn">
-          API ulanmadi. <code>config.js</code> dagi Railway URL ni tekshiring.<br>
-          <small>${BB.escape(e.message)}</small>
-        </div></div>`;
-      }
-    }
-    init();
-  </script>
+<body data-page="home">
+<a class="skip-link" href="#app">Asosiy mazmunga o‘tish</a>
+<div id="header"></div>
+<main id="app" class="container main-content" aria-busy="true"><p class="loading-copy" role="status">Buxara Best yuklanmoqda…</p></main>
+<div id="footer"></div>
+<noscript><div class="container empty-state">Yangiliklarni o‘qish uchun JavaScript’ni yoqing.</div></noscript>
 </body>
 </html>

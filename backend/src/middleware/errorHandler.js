@@ -1,47 +1,14 @@
 function errorHandler(err, req, res, next) {
-  console.error('[error]', err.message || err);
-  if (err.stack && process.env.NODE_ENV !== 'production') {
-    console.error(err.stack);
-  }
-
-  if (err.name === 'SequelizeValidationError') {
-    return res.status(400).json({
-      success: false,
-      message: 'Validation error',
-      errors: err.errors?.map((e) => e.message) || []
-    });
-  }
-  if (err.name === 'SequelizeUniqueConstraintError') {
-    return res.status(409).json({
-      success: false,
-      message: 'Duplicate entry',
-      errors: err.errors?.map((e) => e.message) || []
-    });
-  }
-  if (err.name === 'SequelizeForeignKeyConstraintError') {
-    return res.status(400).json({
-      success: false,
-      message: 'Noto‘g‘ri kategoriya yoki bog‘liq ma’lumot'
-    });
-  }
-  if (err.code === 'LIMIT_FILE_SIZE') {
-    return res.status(400).json({ success: false, message: 'Fayl juda katta (max 50MB)' });
-  }
-  if (err.message && /Only image|file type|ImgBB|IMGBB|Cloudinary|Video yuklash|sozlanmagan/i.test(err.message)) {
-    return res.status(err.status || 400).json({ success: false, message: err.message });
-  }
-
-  const status = err.status || err.statusCode || 500;
-  // Admin uchun xabar yashirmaymiz — aks holda "Internal server error" foydasiz
-  const message =
-    status >= 500
-      ? (err.message || 'Internal server error')
-      : (err.message || 'Request failed');
-
-  res.status(status).json({
-    success: false,
-    message
-  });
+  if (res.headersSent) return next(err);
+  let status = err.status || err.statusCode || 500;
+  let code = err.code || 'INTERNAL_ERROR';
+  let message = err.message || 'Request failed';
+  if (err.name === 'SequelizeValidationError') { status = 400; code = 'VALIDATION_ERROR'; message = 'Maydon qiymatlarini tekshiring.'; }
+  if (err.name === 'SequelizeUniqueConstraintError') { status = 409; code = 'CONFLICT'; message = 'Bu qiymat allaqachon mavjud.'; }
+  if (err.name === 'SequelizeForeignKeyConstraintError') { status = 409; code = 'RELATED_RECORDS'; message = 'Bog‘liq yozuvlar mavjud. Kategoriyani tekshiring.'; }
+  if (err.name === 'MulterError') { status = 400; code = err.code; message = err.code === 'LIMIT_FILE_SIZE' ? 'Fayl 50 MB dan oshmasligi kerak.' : 'Fayllar soni yoki maydonini tekshiring.'; }
+  if (status >= 500 && !err.expose) message = 'Xizmat vaqtincha mavjud emas. Keyinroq qayta urinib ko‘ring.';
+  if (status >= 500) console.error('[request-error]', err.name || 'Error', status);
+  res.status(status).json({ success: false, code, message });
 }
-
 module.exports = errorHandler;

@@ -1,42 +1,16 @@
-/**
- * Admin yaratish / parolni yangilash
- *
- * Foydalanish:
- *   node scripts/createAdmin.js
- *   node scripts/createAdmin.js myuser mypass
- *
- * Yoki faqat env:
- *   ADMIN_USERNAME=admin ADMIN_PASSWORD=secret node scripts/createAdmin.js
- */
 require('dotenv').config();
 const { sequelize, User } = require('../backend/src/models');
-
 async function main() {
-  const username =
-    process.argv[2] || process.env.ADMIN_USERNAME || process.env.ADMIN_USER || 'admin';
-  const password =
-    process.argv[3] || process.env.ADMIN_PASSWORD || process.env.ADMIN_PASS || 'admin123';
-
-  console.log('Connecting to database...');
+  const username=process.env.ADMIN_USERNAME || process.env.ADMIN_USER;
+  const password=process.env.ADMIN_PASSWORD || process.env.ADMIN_PASS;
+  if(!username || !password || password.length<12) throw Error('Set ADMIN_USERNAME and ADMIN_PASSWORD (at least 12 characters) in the environment.');
   await sequelize.authenticate();
-  await sequelize.sync({ alter: true });
-
-  let user = await User.findOne({ where: { username } });
-  if (!user) {
-    user = await User.create({ username, password, role: 'admin', isActive: true });
-    console.log('✅ Admin yaratildi:', username);
-  } else {
-    user.password = password;
-    user.role = 'admin';
-    user.isActive = true;
-    await user.save();
-    console.log('✅ Admin yangilandi (parol o‘zgardi):', username);
-  }
-  console.log('Login: username =', username);
-  process.exit(0);
+  const existing=await User.findOne({where:{username}});
+  if(existing) {
+    if(!process.argv.includes('--reset-password')) throw Error('Account exists. Use --reset-password for an intentional password reset.');
+    // Preserve the existing role and active status.
+    await existing.update({password});
+  } else await User.create({username,password,role:'admin',isActive:true});
+  console.log('Administrator operation completed.');
 }
-
-main().catch((e) => {
-  console.error('❌ Xato:', e.message);
-  process.exit(1);
-});
+main().catch(()=>{ console.error('Administrator operation failed; check configuration and whether the account already exists.'); process.exitCode=1; }).finally(()=>sequelize.close());

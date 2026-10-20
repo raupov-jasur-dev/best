@@ -66,7 +66,7 @@
     <div class="container px-0">
         <nav class="navbar navbar-light navbar-expand-xl">
             <a href="{% url 'home' %}" class="navbar-brand mt-3">
-                <p class="text-primary display-6 mb-2" style="line-height: 0;">Bukhara Best</p>
+                <p class="text-primary display-6 mb-2" style="line-height: 0;">Buxara Best</p>
                 <small class="text-body fw-normal" style="letter-spacing: 12px;">yangiliklari</small>
             </a>
             <button class="navbar-toggler py-2 px-3" type="button" data-bs-toggle="collapse"
@@ -395,7 +395,7 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Замените 'YOUR_API_KEY' на ваш действительный API ключ
-    const apiKey = '7db9064a5e45ab50a75380a679a7583d';
+    const apiKey = (window.__PUBLIC_WEATHER_KEY__ || '');
     // Используйте город по вашему выбору
     const city = 'Bukhara,UZ';;
     const url = `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}&units=metric`;

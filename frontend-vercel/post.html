@@ -1,120 +1,36 @@
 <!DOCTYPE html>
 <html lang="uz">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Yangilik — Bukhara Best</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
-  <link href="/assets/css/portal.css" rel="stylesheet">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#f6f4ee">
+<title>Yangilik — Buxara Best</title>
+<meta name="description" content="Buxara Best — Buxoro, O‘zbekiston va dunyodagi voqealar. Eng muhim xabarlar bir manzilda.">
+<meta property="og:site_name" content="Buxara Best">
+<meta property="og:title" content="Yangilik — Buxara Best">
+<meta property="og:description" content="Buxara Best — Buxoro, O‘zbekiston va dunyodagi voqealar. Eng muhim xabarlar bir manzilda.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://bukharabest.vercel.app">
+<meta property="og:image" content="https://bukharabest.vercel.app/assets/brand/social.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://bukharabest.vercel.app">
+<link rel="icon" type="image/svg+xml" href="/assets/brand/favicon.svg">
+<link rel="preload" href="/assets/fonts/editorial-3.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/assets/fonts/editorial-11.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/assets/fonts/editorial-7.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/assets/css/fonts.css">
+<link rel="stylesheet" href="/assets/css/portal.css">
+<link rel="stylesheet" href="/assets/css/editorial.css">
+<script src="/config.js" defer></script>
+<script src="/assets/js/api.js" defer></script>
+<script src="/assets/js/layout.js" defer></script>
+<script src="/assets/js/public.js" defer></script>
 </head>
-<body>
-  <div id="header"></div>
-  <main>
-    <div id="loading" class="loading-wrap"><div class="spinner"></div></div>
-    <div id="app" style="display:none"></div>
-  </main>
-  <div id="footer"></div>
-
-  <script src="/config.js"></script>
-  <script src="/assets/js/api.js"></script>
-  <script src="/assets/js/layout.js"></script>
-  <script>
-    const id = new URLSearchParams(location.search).get('id');
-
-    async function init() {
-      if (!id) { location.href = '/'; return; }
-      try {
-        const [newsRes, catRes, relatedRes] = await Promise.all([
-          BB.api('/news/' + id),
-          BB.api('/categories'),
-          BB.api('/news?limit=6')
-        ]);
-        const n = newsRes.data;
-        const cats = catRes.data || [];
-        const related = (relatedRes.data || []).filter(x => String(x.id) !== String(id)).slice(0, 3);
-
-        document.getElementById('header').innerHTML = BB.renderHeader(cats, n.category ? 'cat-' + n.category.id : '');
-        document.getElementById('footer').innerHTML = BB.renderFooter(cats);
-        BB.bindHeader();
-        document.title = n.title + ' — Bukhara Best';
-
-        const contentHtml = BB.escape(n.content || n.shortDescription || '')
-          .replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>');
-
-        const comments = n.comments || [];
-
-        document.getElementById('app').innerHTML = `
-        <article class="article-page">
-          <div class="container">
-            <header class="article-header">
-              ${n.category ? `<a class="badge-cat" href="/category.html?id=${n.category.id}">${BB.escape(n.category.name)}</a>` : ''}
-              <h1>${BB.escape(n.title)}</h1>
-              <div class="meta">
-                <span><i class="bi bi-clock"></i> ${BB.formatDate(n.publishedAt)}</span>
-                <span class="dot"><i class="bi bi-eye"></i> ${n.views || 0} ko‘rish</span>
-                <span class="dot"><i class="bi bi-chat"></i> ${comments.length}</span>
-              </div>
-            </header>
-            ${n.mainImage ? `<div class="article-hero"><img src="${BB.escape(n.mainImage)}" alt=""></div>` : ''}
-            <div class="article-body"><p>${contentHtml}</p></div>
-            ${(n.video || (n.images && n.images.length)) ? `
-            <div class="article-media container">
-              ${n.video ? `<video src="${BB.escape(n.video)}" controls playsinline></video>` : ''}
-              ${(n.images || []).map(img => `<img src="${BB.escape(img.url)}" alt="" loading="lazy">`).join('')}
-            </div>` : ''}
-            <div class="comments-box">
-              <h3>Izohlar (${comments.length})</h3>
-              <div id="commentsList">
-                ${comments.map(c => `
-                  <div class="comment">
-                    <strong>${BB.escape(c.authorName || 'Mehmon')}</strong>
-                    <p>${BB.escape(c.content)}</p>
-                  </div>`).join('') || '<p class="meta">Hali izoh yo‘q. Birinchi bo‘ling.</p>'}
-              </div>
-              <form class="comment-form" id="commentForm" style="margin-top:18px">
-                <input name="authorName" placeholder="Ismingiz" maxlength="120">
-                <textarea name="content" rows="3" required placeholder="Izohingizni yozing..."></textarea>
-                <button type="submit" class="btn-bb">Yuborish</button>
-              </form>
-            </div>
-            ${related.length ? `
-            <div style="max-width:920px;margin:48px auto 0">
-              <div class="section-title"><h2>Boshqa yangiliklar</h2></div>
-              <div class="news-grid">${related.map(r => BB.cardHtml(r)).join('')}</div>
-            </div>` : ''}
-          </div>
-        </article>`;
-
-        document.getElementById('loading').style.display = 'none';
-        document.getElementById('app').style.display = 'block';
-
-        document.getElementById('commentForm').onsubmit = async (e) => {
-          e.preventDefault();
-          const fd = new FormData(e.target);
-          try {
-            await BB.api('/news/' + id + '/comments', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                authorName: fd.get('authorName'),
-                content: fd.get('content')
-              })
-            });
-            location.reload();
-          } catch (err) {
-            alert(err.message);
-          }
-        };
-      } catch (e) {
-        document.getElementById('loading').innerHTML =
-          `<div class="page-404"><div class="code">4<span>0</span>4</div>
-           <p>${BB.escape(e.message)}</p><a class="btn-bb" href="/">Bosh sahifa</a></div>`;
-      }
-    }
-    init();
-  </script>
+<body data-page="article">
+<a class="skip-link" href="#app">Asosiy mazmunga o‘tish</a>
+<div id="header"></div>
+<main id="app" class="container main-content" aria-busy="true"><p class="loading-copy" role="status">Buxara Best yuklanmoqda…</p></main>
+<div id="footer"></div>
+<noscript><div class="container empty-state">Yangiliklarni o‘qish uchun JavaScript’ni yoqing.</div></noscript>
 </body>
 </html>

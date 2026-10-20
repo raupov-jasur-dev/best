@@ -1,359 +1,157 @@
 const { Op } = require('sequelize');
-const { News, Category, NewsImage, Comment } = require('../models');
+const { sequelize, News, Category, NewsImage, Comment } = require('../models');
 const { makeSlug, paginate } = require('../utils/helpers');
-const { uploadImage, uploadVideo, deleteMedia } = require('../services/uploadService');
-const { sendToTelegram } = require('../services/telegramService');
-
-async function newsForTelegram(idOrInstance) {
-  const id = typeof idOrInstance === 'object' ? idOrInstance.id : idOrInstance;
-  return News.findByPk(id, {
-    include: [{ model: Category, as: 'category', attributes: ['id', 'name'] }]
-  });
+const { uploadImage, uploadVideo } = require('../services/uploadService');
+const { publishToTelegram } = require('../services/publicationService');
+const { fail, text, id, bool } = require('../utils/validation');
+const includeCategory = [{model:Category,as:'category',attributes:['id','name','slug']}];
+const publicAttributes = {exclude:['mainImagePublicId','videoPublicId','telegramError','telegramMessageId']};
+const order = [['publishedAt','DESC'],['id','DESC']];
+function searchWhere(search,withContent=true) {
+  if(search===undefined || search==='') return {};
+  const q=text(search,'Qidiruv',200,true).replace(/[\\%_]/g,'\\$&');
+  return {[Op.or]:['title','shortDescription',...(withContent?['content']:[])].map(field=>({[field]:{[Op.iLike]:'%'+q+'%'}}))};
 }
-
-
-// Public
-async function listNews(req, res, next) {
+async function listNews(req,res,next) {
   try {
-    const { page, limit, category, search, featured } = req.query;
-    const { offset, limit: lim, page: p } = paginate(null, page, limit);
-    const where = { status: 'published' };
-    if (category) where.categoryId = category;
-    if (featured === 'true') where.featured = true;
-    if (search) {
-      where[Op.or] = [
-        { title: { [Op.iLike]: `%${search}%` } },
-        { shortDescription: { [Op.iLike]: `%${search}%` } },
-        { content: { [Op.iLike]: `%${search}%` } }
-      ];
+    const paging=paginate(null,req.query.page,req.query.limit);
+    const where={status:'published',...searchWhere(req.query.search)};
+    if(req.query.category) {
+      const category=/^\d+$/.test(req.query.category) ? await Category.findByPk(id(req.query.category)) : await Category.findOne({where:{slug:text(req.query.category,'Kategoriya',200,true)}});
+      if(!category) throw fail('Kategoriya topilmadi.',404,'NOT_FOUND');
+      where.categoryId=category.id;
     }
-    const { count, rows } = await News.findAndCountAll({
-      where,
-      include: [{ model: Category, as: 'category', attributes: ['id', 'name', 'slug'] }],
-      order: [['publishedAt', 'DESC']],
-      offset,
-      limit: lim
-    });
-    res.json({
-      success: true,
-      data: rows,
-      pagination: { total: count, page: p, limit: lim, pages: Math.ceil(count / lim) }
-    });
-  } catch (err) {
-    next(err);
-  }
+    if(req.query.featured==='true') where.featured=true;
+    if(req.query.featured==='false') where.featured=false;
+    const {count,rows}=await News.findAndCountAll({where,attributes:publicAttributes,include:includeCategory,offset:paging.offset,limit:paging.limit,
+      order:req.query.sort==='views' ? [['views','DESC'],...order] : order});
+    res.json({success:true,data:rows,pagination:{total:count,page:paging.page,limit:paging.limit,pages:Math.ceil(count/paging.limit)}});
+  } catch(e){next(e);}
 }
-
-async function getNewsBySlugOrId(req, res, next) {
+async function getNewsBySlugOrId(req,res,next) {
   try {
-    const idOrSlug = req.params.idOrSlug;
-    const where = isNaN(idOrSlug) ? { slug: idOrSlug } : { id: idOrSlug };
-    where.status = 'published';
-    const news = await News.findOne({
-      where,
-      include: [
-        { model: Category, as: 'category' },
-        { model: NewsImage, as: 'images' },
-        { model: Comment, as: 'comments', where: { isApproved: true }, required: false }
-      ]
-    });
-    if (!news) return res.status(404).json({ success: false, message: 'News not found' });
-
-    // Increment views
-    await news.increment('views');
-    news.views += 1;
-
-    res.json({ success: true, data: news });
-  } catch (err) {
-    next(err);
-  }
+    const key=req.params.idOrSlug;
+    const news=await News.findOne({where:{...(/^\d+$/.test(key)?{id:id(key)}:{slug:key}),status:'published'},attributes:publicAttributes,
+      include:[...includeCategory,{model:NewsImage,as:'images',attributes:['id','url','sortOrder']},{model:Comment,as:'comments',where:{isApproved:true},required:false}],
+      order:[[{model:NewsImage,as:'images'},'sortOrder','ASC']]});
+    if(!news) throw fail('Yangilik topilmadi.',404,'NOT_FOUND');
+    const views=Number(news.views)||0; await News.increment('views',{where:{id:news.id},returning:false}); news.setDataValue('views',views+1);
+    res.json({success:true,data:news});
+  } catch(e){next(e);}
 }
-
-// Admin
-async function adminList(req, res, next) {
+async function adminList(req,res,next) {
   try {
-    const { page, limit, status, search } = req.query;
-    const { offset, limit: lim, page: p } = paginate(null, page, limit || 20);
-    const where = {};
-    if (status) where.status = status;
-    if (search) {
-      where[Op.or] = [
-        { title: { [Op.iLike]: `%${search}%` } },
-        { shortDescription: { [Op.iLike]: `%${search}%` } }
-      ];
-    }
-    const { count, rows } = await News.findAndCountAll({
-      where,
-      include: [{ model: Category, as: 'category', attributes: ['id', 'name'] }],
-      order: [['createdAt', 'DESC']],
-      offset,
-      limit: lim
-    });
-    res.json({
-      success: true,
-      data: rows,
-      pagination: { total: count, page: p, limit: lim, pages: Math.ceil(count / lim) }
-    });
-  } catch (err) {
-    next(err);
-  }
+    const p=paginate(null,req.query.page,req.query.limit || 20);
+    const where=searchWhere(req.query.search,false);
+    if(req.query.status) { if(!['draft','published'].includes(req.query.status)) throw fail('Noto‘g‘ri holat.'); where.status=req.query.status; }
+    if(req.query.category) where.categoryId=id(req.query.category);
+    if(req.query.telegramStatus) { if(!['pending','published','failed','skipped'].includes(req.query.telegramStatus)) throw fail('Noto‘g‘ri Telegram holati.'); where.telegramStatus=req.query.telegramStatus; }
+    if(req.query.featured==='true') where.featured=true;
+    const {count,rows}=await News.findAndCountAll({where,include:includeCategory,offset:p.offset,limit:p.limit,order:[['createdAt','DESC'],['id','DESC']]});
+    res.json({success:true,data:rows,pagination:{total:count,page:p.page,limit:p.limit,pages:Math.ceil(count/p.limit)}});
+  } catch(e){next(e);}
 }
-
-async function adminGet(req, res, next) {
+async function adminGet(req,res,next) {
   try {
-    const news = await News.findByPk(req.params.id, {
-      include: [
-        { model: Category, as: 'category' },
-        { model: NewsImage, as: 'images' }
-      ]
-    });
-    if (!news) return res.status(404).json({ success: false, message: 'Not found' });
-    res.json({ success: true, data: news });
-  } catch (err) {
-    next(err);
-  }
+    const news=await News.findByPk(id(req.params.id),{include:[...includeCategory,{model:NewsImage,as:'images'}]});
+    if(!news) throw fail('Yangilik topilmadi.',404,'NOT_FOUND');
+    res.json({success:true,data:news});
+  } catch(e){next(e);}
 }
-
-async function createNews(req, res, next) {
+async function values(body,existing) {
+  const data={};
+  if(!existing || body.title!==undefined) data.title=text(body.title,'Sarlavha',1000,true);
+  for(const field of ['shortDescription','content']) if(body[field]!==undefined) data[field]=text(body[field],field,field==='content'?1000000:10000);
+  if(!existing || body.categoryId!==undefined) {
+    data.categoryId=id(body.categoryId);
+    if(!await Category.findByPk(data.categoryId)) throw fail('Kategoriya topilmadi.');
+  }
+  if(body.status!==undefined && !['draft','published'].includes(body.status)) throw fail('Noto‘g‘ri nashr holati.');
+  if(body.featured!==undefined) data.featured=bool(body.featured);
+  const publish=body.publishAndTelegram!==undefined && bool(body.publishAndTelegram);
+  data.status=publish?'published':body.status || existing?.status || 'draft';
+  if(data.status==='published') data.publishedAt=existing?.publishedAt || new Date();
+  if(!existing) {data.slug=makeSlug(data.title);data.telegramStatus=data.status==='draft'?'skipped':'pending';}
+  return data;
+}
+async function media(req) {
+  const data={}; const gallery=[];
+  if(req.files?.mainImage?.[0]) {const up=await uploadImage(req.files.mainImage[0]);data.mainImage=up.url;data.mainImagePublicId=up.publicId;}
+  if(req.files?.video?.[0]) {const up=await uploadVideo(req.files.video[0]);data.video=up.url;data.videoPublicId=up.publicId;}
+  for(const file of req.files?.additionalImages || []) gallery.push(await uploadImage(file));
+  return {data,gallery};
+}
+async function save(req,res,next,editing=false) {
   try {
-    const {
-      title,
-      shortDescription,
-      content,
-      categoryId,
-      status = 'draft',
-      featured = false,
-      publishAndTelegram = false
-    } = req.body;
-
-    if (!title || !categoryId) {
-      return res.status(400).json({ success: false, message: 'Title and category are required' });
-    }
-
-    // Kategoriya mavjudligini tekshirish
-    const cat = await Category.findByPk(parseInt(categoryId, 10));
-    if (!cat) {
-      return res.status(400).json({ success: false, message: 'Kategoriya topilmadi' });
-    }
-
-    let mainImage = null, mainImagePublicId = null, video = null, videoPublicId = null;
-
-    try {
-      if (req.files?.mainImage?.[0]) {
-        const up = await uploadImage(req.files.mainImage[0]);
-        if (up) {
-          mainImage = up.url;
-          mainImagePublicId = up.publicId;
-        }
-      }
-      if (req.files?.video?.[0]) {
-        const up = await uploadVideo(req.files.video[0]);
-        if (up) {
-          video = up.url;
-          videoPublicId = up.publicId;
-        }
-      }
-    } catch (uploadErr) {
-      uploadErr.status = uploadErr.status || 400;
-      throw uploadErr;
-    }
-
-    const finalStatus = publishAndTelegram === 'true' || publishAndTelegram === true ? 'published' : (status || 'draft');
-    const news = await News.create({
-      title: String(title).trim(),
-      slug: makeSlug(title),
-      shortDescription: shortDescription || '',
-      content: content || '',
-      categoryId: parseInt(categoryId, 10),
-      mainImage,
-      mainImagePublicId,
-      video,
-      videoPublicId,
-      status: finalStatus === 'published' ? 'published' : 'draft',
-      featured: featured === 'true' || featured === true,
-      publishedAt: finalStatus === 'published' ? new Date() : null,
-      telegramStatus: finalStatus === 'published' ? 'pending' : 'skipped'
+    const existing=editing?await News.findByPk(id(req.params.id)):null;
+    if(editing && !existing) throw fail('Yangilik topilmadi.',404,'NOT_FOUND');
+    const data=await values(req.body,existing);
+    if(existing && /^(IN_FLIGHT):/.test(existing.telegramError || '') && data.status==='draft') throw fail('Telegram yuborilmoqda. Jarayon tugashini kuting.',409);
+    // Upload all files before saving. Existing media is retained for recovery.
+    const uploaded=await media(req);
+    const previousStatus=existing?.status;
+    const news=await sequelize.transaction(async transaction=>{
+      let record;
+      if(existing){
+        record=await News.findByPk(existing.id,{transaction,lock:transaction.LOCK.UPDATE});
+        if(!record)throw fail('Yangilik topilmadi.',404,'NOT_FOUND');
+        if(/^IN_FLIGHT:/.test(record.telegramError || '') && data.status==='draft')throw fail('Telegram yuborilmoqda. Jarayon tugashini kuting.',409);
+        await record.update({...data,...uploaded.data},{transaction});
+      }else record=await News.create({...data,...uploaded.data},{transaction});
+      const count=await NewsImage.count({where:{newsId:record.id},transaction});
+      for(let i=0;i<uploaded.gallery.length;i++) await NewsImage.create({newsId:record.id,url:uploaded.gallery[i].url,publicId:uploaded.gallery[i].publicId,sortOrder:count+i},{transaction});
+      return record;
     });
-
-    // Additional images
-    if (req.files?.additionalImages) {
-      for (let i = 0; i < req.files.additionalImages.length; i++) {
-        const up = await uploadImage(req.files.additionalImages[i]);
-        await NewsImage.create({
-          newsId: news.id,
-          url: up.url,
-          publicId: up.publicId,
-          sortOrder: i
-        });
-      }
-    }
-
-    // Telegram if publish
-    if (finalStatus === 'published') {
-      const tgNews = await newsForTelegram(news);
-      const tg = await sendToTelegram(tgNews || news);
-      await news.update({
-        telegramStatus: tg.status,
-        telegramMessageId: tg.messageId || null,
-        telegramPublishedAt: tg.publishedAt || null,
-        telegramError: tg.error || null
-      });
-    }
-
-    const full = await News.findByPk(news.id, {
-      include: [{ model: Category, as: 'category' }, { model: NewsImage, as: 'images' }]
-    });
-
-    res.status(201).json({ success: true, data: full });
-  } catch (err) {
-    next(err);
-  }
+    let telegram;
+    if(news.status==='published' && (previousStatus!=='published' || req.body.publishAndTelegram===true || req.body.publishAndTelegram==='true')) telegram=await publishToTelegram(news.id);
+    const full=await News.findByPk(news.id,{include:[...includeCategory,{model:NewsImage,as:'images'}]});
+    res.status(editing?200:201).json({success:true,data:full,...(telegram?{telegram}:{})});
+  } catch(e){next(e);}
 }
-
-async function updateNews(req, res, next) {
+const createNews=(req,res,next)=>save(req,res,next,false);
+const updateNews=(req,res,next)=>save(req,res,next,true);
+async function deleteNews(req,res,next) {
   try {
-    const news = await News.findByPk(req.params.id, { include: [{ model: NewsImage, as: 'images' }] });
-    if (!news) return res.status(404).json({ success: false, message: 'Not found' });
-
-    const {
-      title,
-      shortDescription,
-      content,
-      categoryId,
-      status,
-      featured,
-      publishAndTelegram
-    } = req.body;
-
-    if (title) news.title = title;
-    if (shortDescription !== undefined) news.shortDescription = shortDescription;
-    if (content !== undefined) news.content = content;
-    if (categoryId) news.categoryId = parseInt(categoryId, 10);
-    if (featured !== undefined) news.featured = featured === 'true' || featured === true;
-
-    // Media updates
-    if (req.files?.mainImage?.[0]) {
-      if (news.mainImagePublicId) await deleteMedia(news.mainImagePublicId);
-      const up = await uploadImage(req.files.mainImage[0]);
-      news.mainImage = up.url;
-      news.mainImagePublicId = up.publicId;
-    }
-    if (req.files?.video?.[0]) {
-      if (news.videoPublicId) await deleteMedia(news.videoPublicId, 'video');
-      const up = await uploadVideo(req.files.video[0]);
-      news.video = up.url;
-      news.videoPublicId = up.publicId;
-    }
-
-    const shouldPublish = publishAndTelegram === 'true' || publishAndTelegram === true;
-    if (shouldPublish) {
-      news.status = 'published';
-      if (!news.publishedAt) news.publishedAt = new Date();
-    } else if (status) {
-      news.status = status;
-      if (status === 'published' && !news.publishedAt) news.publishedAt = new Date();
-    }
-
-    await news.save();
-
-    if (req.files?.additionalImages) {
-      for (let i = 0; i < req.files.additionalImages.length; i++) {
-        const up = await uploadImage(req.files.additionalImages[i]);
-        await NewsImage.create({
-          newsId: news.id,
-          url: up.url,
-          publicId: up.publicId,
-          sortOrder: (news.images?.length || 0) + i
-        });
-      }
-    }
-
-    if (shouldPublish && news.telegramStatus !== 'published') {
-      const tgNews = await newsForTelegram(news);
-      const tg = await sendToTelegram(tgNews || news);
-      await news.update({
-        telegramStatus: tg.status,
-        telegramMessageId: tg.messageId || null,
-        telegramPublishedAt: tg.publishedAt || null,
-        telegramError: tg.error || null
-      });
-    }
-
-    const full = await News.findByPk(news.id, {
-      include: [{ model: Category, as: 'category' }, { model: NewsImage, as: 'images' }]
+    await sequelize.transaction(async transaction=>{
+      const news=await News.findByPk(id(req.params.id),{transaction,lock:transaction.LOCK.UPDATE});
+      if(!news) throw fail('Yangilik topilmadi.',404,'NOT_FOUND');
+      if(/^IN_FLIGHT:/.test(news.telegramError || '')) throw fail('Telegram nashri jarayonda.',409);
+      await Comment.destroy({where:{newsId:news.id},transaction});
+      await NewsImage.destroy({where:{newsId:news.id},transaction});
+      await news.destroy({transaction});
     });
-    res.json({ success: true, data: full });
-  } catch (err) {
-    next(err);
-  }
+    res.json({success:true,message:'Yangilik o‘chirildi. Media fayllar saqlandi.'});
+  } catch(e){next(e);}
 }
-
-async function deleteNews(req, res, next) {
+async function retryTelegram(req,res,next) {
+  try { const telegram=await publishToTelegram(id(req.params.id)); res.json({success:true,data:await News.findByPk(req.params.id),telegram}); }
+  catch(e){next(e);}
+}
+async function publishNews(req,res,next) {
   try {
-    const news = await News.findByPk(req.params.id, { include: [{ model: NewsImage, as: 'images' }] });
-    if (!news) return res.status(404).json({ success: false, message: 'Not found' });
-    if (news.mainImagePublicId) await deleteMedia(news.mainImagePublicId);
-    if (news.videoPublicId) await deleteMedia(news.videoPublicId, 'video');
-    for (const img of news.images || []) {
-      if (img.publicId) await deleteMedia(img.publicId);
-    }
-    await news.destroy();
-    res.json({ success: true, message: 'Deleted' });
-  } catch (err) {
-    next(err);
-  }
+    const news=await News.findByPk(id(req.params.id));
+    if(!news) throw fail('Yangilik topilmadi.',404,'NOT_FOUND');
+    await news.update({status:'published',publishedAt:news.publishedAt || new Date()});
+    const telegram=await publishToTelegram(news.id);
+    res.json({success:true,data:await News.findByPk(news.id),telegram});
+  } catch(e){next(e);}
 }
-
-async function retryTelegram(req, res, next) {
+async function resolveTelegram(req,res,next) {
   try {
-    const news = await News.findByPk(req.params.id);
-    if (!news) return res.status(404).json({ success: false, message: 'Not found' });
-    if (news.status !== 'published') {
-      return res.status(400).json({ success: false, message: 'News must be published first' });
-    }
-    const tgNews = await newsForTelegram(news);
-      const tg = await sendToTelegram(tgNews || news);
-    await news.update({
-      telegramStatus: tg.status,
-      telegramMessageId: tg.messageId || null,
-      telegramPublishedAt: tg.publishedAt || null,
-      telegramError: tg.error || null
-    });
-    res.json({ success: true, data: news, telegram: tg });
-  } catch (err) {
-    next(err);
-  }
+    const news=await News.findByPk(id(req.params.id));
+    if(!news) throw fail('Yangilik topilmadi.',404,'NOT_FOUND');
+    if(!/^(IN_FLIGHT|DELIVERY_UNCERTAIN):/.test(news.telegramError || '')) throw fail('Tasdiqlash talab qilinmagan.',409);
+    if(/^IN_FLIGHT:/.test(news.telegramError) && Date.now()-new Date(news.updatedAt).getTime()<180000) throw fail('Jarayon tugashini kamida 3 daqiqa kuting.',409);
+    let changes;
+    if(req.body.messageId) {
+      const messageId=String(req.body.messageId);
+      if(!/^[1-9]\d{0,18}$/.test(messageId)) throw fail('Telegram xabar ID sini tekshiring.');
+      changes={telegramStatus:'published',telegramMessageId:messageId,telegramPublishedAt:new Date(),telegramError:null};
+    } else if(req.body.confirmedNotSent===true) changes={telegramStatus:'failed',telegramError:'Operator kanalni tekshirdi: yuborilmagan.'};
+    else throw fail('Kanalni tekshirish tasdig‘i talab qilinadi.');
+    const [changed]=await News.update(changes,{where:{id:news.id,telegramError:news.telegramError}});
+    if(!changed) throw fail('Holat o‘zgardi. Sahifani yangilang.',409);
+    res.json({success:true,data:await News.findByPk(news.id)});
+  } catch(e){next(e);}
 }
-
-async function publishNews(req, res, next) {
-  try {
-    const news = await News.findByPk(req.params.id);
-    if (!news) return res.status(404).json({ success: false, message: 'Not found' });
-    news.status = 'published';
-    if (!news.publishedAt) news.publishedAt = new Date();
-    await news.save();
-    const tgNews = await newsForTelegram(news);
-      const tg = await sendToTelegram(tgNews || news);
-    await news.update({
-      telegramStatus: tg.status,
-      telegramMessageId: tg.messageId || null,
-      telegramPublishedAt: tg.publishedAt || null,
-      telegramError: tg.error || null
-    });
-    res.json({ success: true, data: news });
-  } catch (err) {
-    next(err);
-  }
-}
-
-module.exports = {
-  listNews,
-  getNewsBySlugOrId,
-  adminList,
-  adminGet,
-  createNews,
-  updateNews,
-  deleteNews,
-  retryTelegram,
-  publishNews
-};
+module.exports={listNews,getNewsBySlugOrId,adminList,adminGet,createNews,updateNews,deleteNews,retryTelegram,publishNews,resolveTelegram};

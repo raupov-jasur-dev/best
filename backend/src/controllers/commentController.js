@@ -1,10 +1,12 @@
 const { Comment, News } = require('../models');
 const { paginate } = require('../utils/helpers');
+const { text, id, bool } = require('../utils/validation');
 
 async function createComment(req, res, next) {
   try {
-    const { authorName, content } = req.body;
-    const newsId = req.params.newsId;
+    const content = text(req.body.content, 'Izoh', 5000, true);
+    const authorName = text(req.body.authorName || 'Mehmon', 'Ism', 120, true);
+    const newsId = id(req.params.newsId);
     if (!content || content.trim().length < 2) {
       return res.status(400).json({ success: false, message: 'Comment too short' });
     }
@@ -16,7 +18,7 @@ async function createComment(req, res, next) {
       newsId,
       authorName: (authorName || 'Mehmon').trim().slice(0, 120),
       content: content.trim(),
-      isApproved: true
+      isApproved: false
     });
     res.status(201).json({ success: true, data: comment });
   } catch (err) {
@@ -49,7 +51,7 @@ async function moderateComment(req, res, next) {
     const comment = await Comment.findByPk(req.params.id);
     if (!comment) return res.status(404).json({ success: false, message: 'Not found' });
     const { isApproved } = req.body;
-    comment.isApproved = !!isApproved;
+    comment.isApproved = bool(isApproved);
     await comment.save();
     res.json({ success: true, data: comment });
   } catch (err) {

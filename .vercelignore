@@ -1,0 +1,15 @@
+.git
+.env
+.env.*
+node_modules
+.qa
+backups
+test-results
+playwright-report
+frontend
+backend
+tests
+scripts
+docs
+*.log
+frontend-vercel/dist

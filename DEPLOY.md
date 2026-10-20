@@ -1,233 +1,94 @@
-# Deploy: Frontend → Vercel | Backend → Railway
+# Existing Vercel + Render release procedure
 
-## Arxitektura
+Preserve the existing service, domains, database, media folders and project identifiers. Do not create replacement production projects or reset data.
 
-```
-Brauzer
-   │
-   ├─► Vercel  (frontend-vercel/)   →  HTML/JS sayt + Admin SPA
-   │
-   └─► Railway (backend/)           →  Node.js API + PostgreSQL
-            │
-            ├─► Cloudinary (rasm/video)
-            └─► Telegram Bot API
-```
+## Verified targets and access
 
----
+- Vercel project: `best`, project ID `prj_5xVdOF2YhwIuHb1fYUppsBRQDmAQ`, team `team_f5yCuDrzKJ9GBUkpwZfyIxQa`, root `frontend-vercel`, framework Other, Node 24.
+- Existing frontend: https://bukharabest.vercel.app
+- Existing active backend content endpoint: https://best-cda1.onrender.com/api/news
+- Health endpoint: https://best-cda1.onrender.com/health
+- Git source: `raupov-jasur-dev/best`.
+- Vercel MCP inspection returned scope 403; the CLI's existing credentials successfully inspected and linked the same project.
+- Render CLI/API access is now authenticated in workspace `Best` (`tea-daigjfjm8hqs73cpcj5g`), existing Node service `srv-daigqgh594qs738n1f70`, root empty/repository root, repo `raupov-jasur-dev/best`, branch `master`.
+- The local `.env` points to a different, empty Neon database. It is not the production source and must never replace the existing Render environment. The actual Render database was inspected read-only and matches the public/admin APIs.
+- A production pg_dump18.6 backup was restored into a separate empty local PostgreSQL cluster. Every row in categories/news/users/news_images/comments matched checksums. Receipt: `backups/buxara-best-2026-10-20T18-44-42-401Z.dump.json` (ignored, restricted Windows ACL). The additive migration completed at 18:50:22Z with existing row checksums unchanged. No account/content reset occurred.
+- The actual Render environment has been preserved as a local Windows DPAPI encrypted recovery snapshot. Secret values were not printed, committed, or overwritten.
 
-## 1. Cloudinary (1 daqiqa)
+Latest verified preview: https://best-1p55msh54-kqirol002-2036s-projects.vercel.app (`dpl_CLfwkV42vqj1s7fsSPumFgRoYhji`, READY, existing project, Vercel Authentication retained). Authenticated HTTP routing/config checks and desktop/mobile browser checks passed. The live API currently returns an empty published feed, so this final preview verifies the real empty state and seven dynamic categories; it does not prove restored article/media availability.
 
-1. https://cloudinary.com → Sign up
-2. Dashboard dan oling:
-   - Cloud name
-   - API Key
-   - API Secret
+The latest pre-release production rollback target was re-inspected: `dpl_Asc6ZczarLr2zbvFSACGJSc2LQTg`, https://best-63t6gmuk2-kqirol002-2036s-projects.vercel.app, aliased to https://bukharabest.vercel.app. Existing Render rollback deploy: `dep-dbbqnj9jfumc73d36l70`, commit `2c7c3b62fe74363813545763453392f84866464b`. Restore the old `npm install` build setting if rebuilding that old commit, which has no lockfile. Release deployment/promotion is recorded separately after live verification.
 
----
+Read-only observations changed during verification: an earlier live browser check showed one published article and twelve categories; subsequent API checks returned zero published articles and seven categories. No production CRUD, view-incrementing article request, migration or Telegram send was issued by this work. Confirm the correct existing Render database/service and investigate this difference before release. Do not seed or initialize the current live database to make the frontend appear populated.
 
-## 2. Telegram Bot
+Keep backend and database production changes blocked until the correct existing Render service, environment and tested backup are accessible. A frontend preview may be inspected against the legacy API; it is not evidence that the new backend/security fixes are deployed. Do not promote a preview as the full release before the backend is ready.
 
-1. @BotFather → `/newbot` → token oling
-2. Kanal yarating, botni **Administrator** qiling
-3. Channel ID oling (masalan `-1001234567890`)
+## 1. Back up and prove recovery
 
----
+Pause editorial writes for the backup/migration window. Retain the currently deployed backend commit and Vercel production deployment ID.
 
-## 3. Backend → Railway
+Set the existing service's correct `DATABASE_URL` in a secure environment. Install the PostgreSQL client tools compatible with the server; optional `PG_BIN` is a directory containing `pg_dump` and `pg_restore`.
+Configure the client certificate trust with `PGSSLROOTCERT` when the provider requires it; the CLI deliberately uses certificate verification for remote databases.
 
-### 3.1 Loyihani yuklash
-
-**Variant A — GitHub (tavsiya):**
-1. GitHubga `bukhara-best` repozitoriyasini push qiling
-2. https://railway.app → New Project → Deploy from GitHub
-3. Reponi tanlang
-
-**Variant B — CLI:**
-```bash
-npm i -g @railway/cli
-railway login
-railway init
-railway up
+```sh
+npm run db:backup
+# BACKUP_RECEIPT points to the generated .dump.json.
+# RESTORE_DATABASE_URL points to a separate EMPTY disposable PostgreSQL database.
+npm run db:verify-backup
 ```
 
-### 3.2 PostgreSQL
+Passwords pass through libpq environment variables rather than command arguments or logs. Backups/receipts remain under ignored `backups/`; store a protected off-host copy. Restore verification refuses a destination with existing tables and never runs `--clean`. The receipt records checksum, source fingerprint and successful restore verification. Production migration requires that matching receipt less than 24 hours old. A successful dump alone is insufficient.
 
-Railway loyiha ichida:
-- **+ New** → **Database** → **Add PostgreSQL**
-- Variables da `DATABASE_URL` avtomatik paydo bo‘ladi
+The production backup and migration described above are verified. Future schema changes still require a fresh matching, restore-tested receipt; do not reuse an expired receipt or the local empty database.
 
-### 3.3 Environment Variables
+## 2. Prepare Render environment
 
-Railway → Variables → quyidagilarni qo‘ying:
+Use the repository root containing `package.json`.
 
-| Variable | Qiymat |
-|----------|--------|
-| `NODE_ENV` | `production` |
-| `DATABASE_URL` | (Railway o‘zi beradi) |
-| `JWT_SECRET` | uzun random matn (32+ belgi) |
-| `CLOUDINARY_CLOUD_NAME` | ... |
-| `CLOUDINARY_API_KEY` | ... |
-| `CLOUDINARY_API_SECRET` | ... |
-| `TELEGRAM_BOT_TOKEN` | ... |
-| `TELEGRAM_CHANNEL_ID` | ... |
-| `FRONTEND_URL` | `https://YOUR-APP.vercel.app` (keyin to‘ldirasiz) |
-| `SITE_BASE_URL` | `https://YOUR-APP.vercel.app` |
+- Build: `npm ci --omit=dev`
+- Start: `npm start`
+- Health check: `/health`
+- `NODE_ENV=production`, correct existing `DATABASE_URL`, unique 32+ character `JWT_SECRET`.
+- `FRONTEND_URL=https://bukharabest.vercel.app`; keep existing `SITE_BASE_URL` if it is a valid public domain. Telegram article links deliberately use `FRONTEND_URL`.
+- `CORS_ORIGINS` is a comma-separated exact-origin allowlist for any extra/custom/preview domains. No wildcard tenants.
+- Keep all current storage/Telegram credentials; coordinate controlled rotations of exposed values as documented in [SECURITY.md](docs/SECURITY.md).
+- `TELEGRAM_DRY_RUN=true` for staging/tests. Set false only for the intended production channel after verification.
+- TLS verifies certificates by default. Supply `DATABASE_CA_CERT` if necessary. Do not silently weaken SSL verification.
 
-### 3.4 Start Command
+Do not change database names, existing accounts or public media paths. The server never creates or resets administrator accounts during restart. No new default categories or synthetic stories are inserted into production.
 
-Settings → Deploy:
-```
-npm start
-```
+## 3. Additive migration and backend deployment
 
-Root Directory: loyiha ildizi (yoki `bukhara-best` agar monorepo)
+After a tested backup, run `npm run db:migrate` with `NODE_ENV=production` and the verified `BACKUP_RECEIPT` in a trusted maintenance environment. This adds `site_settings`, a migration ledger and two feed indexes. Existing news/category/user schema and values are untouched. A transaction and advisory lock serialize migration execution. For this small existing dataset transactional index creation is acceptable; reassess lock time on a large dataset before a maintenance window.
 
-### 3.5 Domain
+Deploy the reviewed backend commit to the existing Render service. Never push to an auto-deploy branch until environment/secrets and backup gates are satisfied. Verify health, DB connectivity, published listing/categories, v1 aliases and public config. Test login on staging, with the existing role behavior. Avoid production article-detail smoke requests when a strict non-mutating test is required: legacy detail increments views.
 
-Settings → Networking → **Generate Domain**  
-Masalan: `https://bukhara-best-production.up.railway.app`
+If the new table is not yet present, public reads use default presentation; protected presentation writes explain the migration requirement. This compatibility fallback is not a substitute for the release migration.
 
-Bu URL ni saqlang — frontend uchun kerak.
+## 4. Vercel frontend deployment
 
-### 3.6 Admin yaratish
+Keep the existing linked project and domains. `frontend-vercel/vercel.json` sets `node build.js`, output `dist`, and no dependency install for the static frontend. Configure public values in the existing project's Vercel environment or use the CLI's public build variables:
 
-Railway → Service → **Shell** (yoki lokalda):
-
-```bash
-node scripts/createAdmin.js admin SizningParolingiz
+```sh
+npx vercel --scope team_f5yCuDrzKJ9GBUkpwZfyIxQa --build-env PUBLIC_API_URL=https://best-cda1.onrender.com --build-env PUBLIC_SITE_URL=https://bukharabest.vercel.app
 ```
 
-### 3.7 Tekshirish
+The checkout root is linked and the project's configured root remains `frontend-vercel`. Never place backend secrets into public variables. Do not rely on NEXT_PUBLIC variables being automatically interpolated into static JavaScript: the explicit build generates `config.js`.
 
-Brauzerda oching:
-```
-https://YOUR-RAILWAY-URL.up.railway.app/health
-```
-Javob: `{"ok":true,...}`
+After backend verification, stage a production deployment with `--prod --skip-domain`, test it, then promote that exact deployment. Preserve `.html?id=` links and legacy redirects. Unknown pages use the branded 404.
 
-```
-https://YOUR-RAILWAY-URL.up.railway.app/api/news
-```
+## 5. Read-only production smoke checks
 
----
+- Health, published list, categories, config/home API and exact CORS origin.
+- Homepage/category/search and media load; old numeric and slug links resolve.
+- Admin login/session, keyboard navigation and real dashboard, using an existing authorized account.
+- No draft creation, delete, media mutation or Telegram publish during production smoke testing.
+- Telegram permission checks may use read-only getMe/getChat/getChatMember in a trusted environment. Actual sends belong only to an explicitly configured safe test channel.
 
-## 4. Frontend → Vercel
+## Rollback
 
-### 4.1 config.js ni to‘ldirish
+Keep the database backup, its receipt, current Render commit/deployment and Vercel deployment ID together. Roll back a failed backend to the prior working Render deployment and restore prior environment settings if they changed; do not reset administrator passwords. The migration is additive, so the old backend can run with the additional table/indexes. Prefer leaving additive schema in place rather than dropping settings data.
 
-`frontend-vercel/config.js` faylida:
+For frontend failure, restore/promote the previously recorded production deployment on the same project. Vercel rollback can suspend automatic production assignment; restore it intentionally when resuming releases.
 
-```js
-window.__API_URL__ = 'https://YOUR-RAILWAY-URL.up.railway.app';
-```
-
-(Railway domainingizni yozing, oxirida `/` bo‘lmasin)
-
-### 4.2 Vercelga yuklash
-
-**Variant A — Vercel Dashboard:**
-1. https://vercel.com → Add New Project
-2. GitHub repo ulang **YOKI** `frontend-vercel` papkasini drag & drop
-3. **Root Directory**: `frontend-vercel` (agar monorepo bo‘lsa)
-4. Framework Preset: **Other**
-5. Build Command: bo‘sh qoldiring
-6. Output Directory: `.` yoki bo‘sh
-7. Deploy
-
-**Variant B — CLI:**
-```bash
-cd frontend-vercel
-npx vercel
-# keyin production:
-npx vercel --prod
-```
-
-### 4.3 Vercel Environment (ixtiyoriy)
-
-Agar config.js o‘rniga env ishlatmoqchi bo‘lsangiz, keyinroq build script qo‘shish mumkin.
-Hozircha `config.js` yetarli.
-
-### 4.4 Frontend URL ni Railwayga qaytarish
-
-Vercel domain chiqgach (masalan `https://bukhara-best.vercel.app`):
-
-1. Railway → Variables
-2. `FRONTEND_URL` = `https://bukhara-best.vercel.app`
-3. `SITE_BASE_URL` = `https://bukhara-best.vercel.app`
-4. Redeploy (avtomatik yoki manual)
-
-Bu CORS uchun muhim.
-
----
-
-## 5. Yakuniy tekshiruv
-
-1. **Vercel URL** oching → yangiliklar chiqishi kerak
-2. `/admin/` → login (admin / parolingiz)
-3. Yangilik yarating → rasm yuklang → **Saqlash va e’lon qilish**
-4. Telegram kanalda post chiqishi kerak
-5. Saytda yangilik darhol ko‘rinishi kerak
-
----
-
-## Muammolar va yechimlar
-
-| Muammo | Yechim |
-|--------|--------|
-| CORS error | Railwayda `FRONTEND_URL` to‘g‘ri Vercel domainiga tengmi? |
-| API ulanmadi | `frontend-vercel/config.js` dagi URL to‘g‘rimi? `/` bilan tugamasin |
-| Admin login ishlamayapti | Railway `/api/admin/login` ishlayaptimi? JWT_SECRET bormi? |
-| Rasm yuklanmayapti | Cloudinary kalitlari to‘g‘rimi? |
-| Telegram ishlamayapti | Bot kanalga admin qilinganmi? Channel ID to‘g‘rimi? |
-| DB xato | Railway Postgres plugin qo‘shilganmi? `DATABASE_URL` bormi? |
-
----
-
-## Lokal test (split)
-
-```bash
-# Terminal 1 — backend
-cd bukhara-best
-cp .env.example .env   # local qiymatlar
-npm install
-npm run dev
-
-# Terminal 2 — frontend
-cd frontend-vercel
-# config.js da: window.__API_URL__ = 'http://localhost:3000';
-npx serve .
-# yoki oddiy: python -m http.server 5173
-```
-
-Brauzer: http://localhost:5173
-
----
-
-## Media: ImgBB (Cloudinary o‘rniga)
-
-1. https://api.imgbb.com/ ga kiring (yoki imgbb.com → About → API)
-2. API key oling
-3. Railway Variables:
-   ```
-   STORAGE_PROVIDER=imgbb
-   IMGBB_API_KEY=sizning_kalitingiz
-   ```
-4. Cloudinary o‘zgaruvchilarini bo‘sh qoldirish mumkin
-
-**Eslatma:** ImgBB faqat **rasm** yuklaydi. Video kerak bo‘lsa Cloudinary ham sozlang.
-
----
-
-## Admin login (Railway Variables — script kerak emas)
-
-Railway → Variables ga qo‘ying:
-
-```
-ADMIN_USERNAME=admin
-ADMIN_PASSWORD=SizningKuchliParolingiz
-```
-
-Server qayta ishga tushganda (Redeploy) admin **avtomatik** yaratiladi yoki paroli yangilanadi.
-
-Admin panel: `https://sizning-frontend.vercel.app/admin/`
-Login: `ADMIN_USERNAME` / `ADMIN_PASSWORD`
+Restore the protected database dump only after an incident assessment and explicit database recovery window: restoring over a live database can lose writes since the backup. Do not automate a destructive restore as a normal deploy rollback.

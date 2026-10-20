@@ -1,13 +1,19 @@
 require('dotenv').config();
+const { randomBytes } = require('crypto');
+const production = process.env.NODE_ENV === 'production';
+const secret = process.env.JWT_SECRET;
+if (production && (!secret || secret.length < 32 || /dev-secret|change-me|placeholder|REPLACE_|YOUR_|EXAMPLE/i.test(secret))) throw new Error('A unique JWT_SECRET of at least 32 characters is required in production');
 
 module.exports = {
   port: process.env.PORT || 3000,
   nodeEnv: process.env.NODE_ENV || 'development',
-  jwtSecret: process.env.JWT_SECRET || 'dev-secret-change-me',
-  jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
+  jwtSecret: secret || randomBytes(48).toString('hex'),
+  jwtExpiresIn: process.env.JWT_EXPIRES_IN || '8h',
   frontendUrl: (process.env.FRONTEND_URL || 'https://bukharabest.vercel.app').replace(/\/$/, ''),
   siteBaseUrl: (process.env.SITE_BASE_URL || 'https://bukharabest.uz').replace(/\/$/, ''),
-  siteName: process.env.SITE_NAME || 'Bukhara Best',
+  siteName: 'Buxara Best',
+  corsOrigins: (process.env.CORS_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean),
+  telegramDryRun: process.env.TELEGRAM_DRY_RUN === 'true',
   telegramBotToken: process.env.TELEGRAM_BOT_TOKEN || '',
   telegramChannelId: process.env.TELEGRAM_CHANNEL_ID || '',
 
@@ -20,15 +26,15 @@ module.exports = {
   socialYoutube: process.env.SOCIAL_YOUTUBE || 'https://www.youtube.com/@bukharabest2436',
   socialSite: process.env.SOCIAL_SITE || process.env.SITE_BASE_URL || 'https://bukharabest.uz',
 
-  homeCarouselCategoryIds: (process.env.HOME_CAROUSEL_CATEGORY_IDS || '1')
+  homeCarouselCategoryIds: (process.env.HOME_CAROUSEL_CATEGORY_IDS || '')
     .split(',')
     .map(Number)
     .filter(Boolean),
-  homeTrendingCategoryIds: (process.env.HOME_TRENDING_CATEGORY_IDS || '1,2')
+  homeTrendingCategoryIds: (process.env.HOME_TRENDING_CATEGORY_IDS || '')
     .split(',')
     .map(Number)
     .filter(Boolean),
-  homeBuxoroCategoryIds: (process.env.HOME_BUXORO_CATEGORY_IDS || '1,3')
+  homeBuxoroCategoryIds: (process.env.HOME_BUXORO_CATEGORY_IDS || '')
     .split(',')
     .map(Number)
     .filter(Boolean),

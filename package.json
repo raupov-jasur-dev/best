@@ -1,37 +1,50 @@
 {
   "name": "bukhara-best",
   "version": "2.0.0",
-  "description": "Bukhara Best news portal - Node.js + Express + PostgreSQL",
+  "description": "Buxara Best - editorial platform, Express and PostgreSQL",
   "main": "backend/src/server.js",
   "scripts": {
     "start": "node backend/src/server.js",
-    "dev": "nodemon backend/src/server.js",
+    "dev": "node --watch backend/src/server.js",
     "db:migrate": "node scripts/migrate.js",
     "db:seed": "node scripts/seed.js",
-    "admin:create": "node scripts/createAdmin.js"
+    "admin:create": "node scripts/createAdmin.js",
+    "test": "node --test --test-concurrency=1 tests/*.test.js",
+    "check": "node scripts/check.js",
+    "build": "node frontend-vercel/build.js",
+    "test:e2e": "playwright test",
+    "db:backup": "node scripts/backup.js",
+    "db:verify-backup": "node scripts/verifyBackup.js"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=22"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
-    "cloudinary": "^2.5.1",
+    "cloudinary": "^2.11.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "ejs": "^3.1.10",
-    "express": "^4.21.0",
+    "express": "^4.22.3",
     "express-rate-limit": "^7.4.0",
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
-    "multer": "^1.4.5-lts.1",
+    "multer": "^2.4.0",
     "pg": "^8.13.0",
     "pg-hstore": "^2.3.4",
-    "sequelize": "^6.37.3",
-    "slugify": "^1.6.6",
-    "uuid": "^10.0.0",
-    "form-data": "^4.0.0"
+    "sequelize": "^6.37.8",
+    "slugify": "^1.6.6"
   },
   "devDependencies": {
-    "nodemon": "^3.1.4"
+    "@axe-core/playwright": "^4.14.0",
+    "@playwright/test": "^1.64.1",
+    "lighthouse": "^13.5.0",
+    "supertest": "^7.3.1",
+    "embedded-postgres": "18.4.0-beta.17"
+  },
+  "overrides": {
+    "sequelize": {
+      "uuid": "^11.1.1"
+    }
   }
 }

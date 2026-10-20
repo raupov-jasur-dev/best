@@ -2,6 +2,8 @@ const { Category, News } = require('../models');
 const slugify = require('slugify');
 const { uploadImage } = require('../services/uploadService');
 const { sequelize } = require('../models');
+const { readPresentation, applyPresentation } = require('../services/presentationService');
+const { text, id } = require('../utils/validation');
 
 async function listCategories(req, res, next) {
   try {
@@ -23,8 +25,8 @@ async function listCategories(req, res, next) {
     const map = {};
     counts.forEach((r) => { map[r.categoryId] = parseInt(r.cnt, 10) || 0; });
 
-    const data = cats.map((c) => {
-      const j = c.toJSON();
+    const data = applyPresentation(cats, await readPresentation()).map((c) => {
+      const j = { ...c };
       j.postsCount = map[c.id] || 0;
       return j;
     });
@@ -37,7 +39,7 @@ async function listCategories(req, res, next) {
 
 async function getCategory(req, res, next) {
   try {
-    const cat = await Category.findByPk(req.params.id);
+    const cat = /^\d+$/.test(req.params.id) ? await Category.findByPk(id(req.params.id)) : await Category.findOne({where:{slug:req.params.id}});
     if (!cat) return res.status(404).json({ success: false, message: 'Not found' });
     res.json({ success: true, data: cat });
   } catch (err) {
@@ -47,8 +49,8 @@ async function getCategory(req, res, next) {
 
 async function createCategory(req, res, next) {
   try {
-    const name = (req.body.name || '').trim();
-    const description = (req.body.description || '').trim() || null;
+    const name = text(req.body.name, 'Nomi', 155, true);
+    const description = text(req.body.description || '', 'Tavsif', 5000) || null;
     if (!name) return res.status(400).json({ success: false, message: 'Name required' });
 
     let icon = null;
@@ -75,12 +77,11 @@ async function updateCategory(req, res, next) {
   try {
     const cat = await Category.findByPk(req.params.id);
     if (!cat) return res.status(404).json({ success: false, message: 'Not found' });
-    const name = req.body.name !== undefined ? String(req.body.name).trim() : null;
-    const description = req.body.description !== undefined ? String(req.body.description).trim() : undefined;
+    const name = req.body.name !== undefined ? text(req.body.name, 'Nomi', 155, true) : null;
+    const description = text(req.body.description, 'Tavsif', 5000);
     if (name) {
       cat.name = name;
-      const baseSlug = slugify(name, { lower: true, strict: true }) || cat.slug;
-      cat.slug = baseSlug;
+      // Preserve published category URLs when the display name changes.
     }
     if (description !== undefined) cat.description = description || null;
     if (req.file) {

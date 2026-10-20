@@ -1,125 +1,29 @@
-(function (w) {
-  const BB = w.BB;
-
-  BB.renderHeader = function (categories, active) {
-    const cats = categories || [];
-    const navLinks = [
-      { href: '/', label: 'Bosh sahifa', key: 'home' },
-      ...cats.slice(0, 6).map(c => ({ href: '/category.html?id=' + c.id, label: c.name, key: 'cat-' + c.id }))
-    ];
-
-    const navHtml = navLinks.map(l =>
-      `<a href="${l.href}" class="${active === l.key ? 'active' : ''}">${BB.escape(l.label)}</a>`
-    ).join('');
-
-    const mobileHtml = navLinks.map(l =>
-      `<a href="${l.href}">${BB.escape(l.label)}</a>`
-    ).join('') + `<a href="/search.html">Qidiruv</a>`;
-
-    const chips = [
-      `<a class="cat-chip ${active === 'home' ? 'active' : ''}" href="/">Barchasi</a>`,
-      ...cats.map(c =>
-        `<a class="cat-chip ${active === 'cat-' + c.id ? 'active' : ''}" href="/category.html?id=${c.id}">${BB.escape(c.name)}</a>`
-      )
-    ].join('');
-
-    return `
-<header class="site-header">
-  <div class="container header-inner">
-    <a href="/" class="brand">
-      <span class="brand-mark">BB</span>
-      <span class="brand-text">Bukhara <span>Best</span></span>
-    </a>
-    <nav class="nav-main">${navHtml}</nav>
-    <div class="header-actions">
-      <a href="/search.html" class="icon-btn" title="Qidiruv" aria-label="Qidiruv"><i class="bi bi-search"></i></a>
-      <button type="button" class="menu-toggle" id="menuToggle" aria-label="Menu"><i class="bi bi-list"></i></button>
-    </div>
-  </div>
-  <div class="mobile-nav" id="mobileNav">
-    <div class="mobile-search">
-      <form action="/search.html" method="get">
-        <input name="q" type="search" placeholder="Qidirish..." autocomplete="off">
-      </form>
-    </div>
-    ${mobileHtml}
-  </div>
-</header>
-<div class="cat-strip">
-  <div class="container cat-strip-inner">${chips}</div>
-</div>`;
-  };
-
-  BB.renderFooter = function (categories) {
-    const cats = (categories || []).slice(0, 8);
-    const year = new Date().getFullYear();
-    return `
-<footer class="site-footer">
-  <div class="container">
-    <div class="footer-grid">
-      <div class="footer-brand">
-        <a href="/" class="brand">
-          <span class="brand-mark">BB</span>
-          <span class="brand-text">Bukhara <span>Best</span></span>
-        </a>
-        <p>Bukhara-best.uz — rasmiy elektron OAV. Respublika va Buxoro viloyatidagi eng so‘nggi yangiliklar.</p>
-      </div>
-      <div class="footer-col">
-        <h4>Navigatsiya</h4>
-        <a href="/">Bosh sahifa</a>
-        <a href="/search.html">Qidiruv</a>
-        <a href="/admin/">Admin</a>
-      </div>
-      <div class="footer-col">
-        <h4>Kategoriyalar</h4>
-        ${cats.map(c => `<a href="/category.html?id=${c.id}">${BB.escape(c.name)}</a>`).join('') || '<span style="opacity:.5">—</span>'}
-      </div>
-      <div class="footer-col">
-        <h4>Aloqa</h4>
-        <a href="https://t.me/Jurnalisttv" target="_blank" rel="noopener">@Jurnalisttv</a>
-        <a href="/search.html">Qidiruv</a>
-      </div>
-    </div>
-    <div class="footer-bottom">
-      <span>© ${year} Bukhara Best. Barcha huquqlar himoyalangan.</span>
-      <span>bukhara-best.uz</span>
-    </div>
-  </div>
-</footer>`;
-  };
-
-  BB.bindHeader = function () {
-    const btn = document.getElementById('menuToggle');
-    const nav = document.getElementById('mobileNav');
-    if (btn && nav) {
-      btn.addEventListener('click', () => nav.classList.toggle('open'));
-    }
-  };
-
-  BB.cardHtml = function (n, opts) {
-    opts = opts || {};
-    const large = opts.large ? ' large' : '';
-    const img = n.mainImage
-      ? `<img src="${BB.escape(n.mainImage)}" alt="" loading="lazy">`
-      : `<div style="width:100%;height:100%;background:#e8ebef"></div>`;
-    const cat = n.category ? `<span class="badge-cat">${BB.escape(n.category.name)}</span>` : '';
-    const desc = opts.showExcerpt
-      ? `<p class="excerpt">${BB.escape(BB.excerpt(n.shortDescription || n.content, 110))}</p>`
-      : '';
-    return `
-<article class="news-card${large}">
-  <a href="/post.html?id=${n.id}">
-    <div class="news-card-img-wrap">${img}</div>
-    <div class="news-card-body">
-      ${cat}
-      <h3>${BB.escape(n.title)}</h3>
-      ${desc}
-      <div class="meta">
-        <span><i class="bi bi-clock"></i> ${BB.formatDate(n.publishedAt)}</span>
-        <span class="dot"><i class="bi bi-eye"></i> ${n.views || 0}</span>
-      </div>
-    </div>
-  </a>
-</article>`;
-  };
+(function(w){
+'use strict';
+const B=w.BB,E=B.escape;
+B.brand=()=>'<span class="brand-symbol" aria-hidden="true"><svg viewBox="0 0 40 48" fill="none"><path d="M6 42V17C6 10 13 6 20 2c7 4 14 8 14 15v25H6Z" stroke="currentColor" stroke-width="2"/><path d="M14 35V16h7a5 5 0 0 1 0 10h-7m7 0a4.5 4.5 0 0 1 0 9h-7" stroke="currentColor" stroke-width="2"/></svg></span><span class="wordmark">Buxara<span><span class="sr-only"> </span>Best<span class="brand-dot" aria-hidden="true">.</span></span></span>';
+B.renderHeader=(cats=[],active='')=>'<div class="utility-bar"><div class="container utility-inner"><span>Buxoro. O‘zbekiston. Dunyo.</span><time>'+E(B.formatDate(new Date()))+'</time><a href="'+E(B.safeUrl(B.config?.social?.telegram || 'https://t.me/Buxarabest'))+'" target="_blank" rel="noopener noreferrer">Telegram '+B.icon('external')+'</a></div></div><header class="site-header"><div class="container masthead"><a class="brand" href="/">'+B.brand()+'</a><span class="masthead-note">Voqealar ortidagi<br><strong>muhim ma’no.</strong></span><div class="header-actions"><button class="icon-button" id="themeToggle" aria-label="Rang mavzusini almashtirish">'+B.icon(document.documentElement.dataset.theme==='dark'?'sun':'moon')+'</button><a class="icon-button" href="/search.html" aria-label="Yangilik qidirish">'+B.icon('search')+'</a><button class="icon-button menu-toggle" id="menuToggle" aria-label="Menyuni ochish" aria-expanded="false" aria-controls="mobileNav">'+B.icon('menu')+'</button></div></div><div class="nav-rule"><div class="container nav-inner"><nav class="category-nav" aria-label="Asosiy"><a href="/" '+(active==='home'?'aria-current="page"':'')+'>Bosh sahifa</a>'+cats.map(c=>'<a href="'+B.catUrl(c)+'" '+(active==='cat-'+c.id?'aria-current="page"':'')+'>'+E(c.name)+'</a>').join('')+'</nav><a class="all-news" href="/search.html">Barcha xabarlar '+B.icon('arrow')+'</a></div></div></header><dialog class="mobile-menu" id="mobileNav"><div class="mobile-menu-top"><a href="/" class="brand">'+B.brand()+'</a><button class="icon-button" id="menuClose" aria-label="Menyuni yopish">'+B.icon('close')+'</button></div><form action="/search.html" class="search-form"><label class="sr-only" for="mobileQuery">Qidiruv</label><input id="mobileQuery" name="q" type="search" placeholder="Nimani izlayapsiz?"><button class="icon-button" aria-label="Qidirish">'+B.icon('search')+'</button></form><nav aria-label="Mobil"><a href="/">Bosh sahifa '+B.icon('arrow')+'</a>'+cats.map(c=>'<a href="'+B.catUrl(c)+'">'+E(c.name)+B.icon('arrow')+'</a>').join('')+'</nav><span class="eyebrow">Buxara Best · Yangiliklar nashri</span></dialog>';
+B.renderFooter=(cats=[])=>{
+ const social=B.config?.social || {telegram:'https://t.me/Buxarabest',instagram:'https://www.instagram.com/buxarabest_/'};
+ return '<footer class="site-footer"><div class="container"><div class="footer-lead"><div><span class="eyebrow">Xabardor bo‘ling.</span><h2>Bir shahar.<br><em>Cheksiz hikoyalar.</em></h2></div><a class="footer-telegram" href="'+E(B.safeUrl(social.telegram || 'https://t.me/Buxarabest'))+'" target="_blank" rel="noopener noreferrer">'+B.icon('send')+'<span>Yangiliklar oqimi<br><strong>Telegramda kuzating</strong></span>'+B.icon('arrow')+'</a></div><div class="footer-main"><div><a class="brand" href="/">'+B.brand()+'</a><p>Buxoro, O‘zbekiston va dunyodagi voqealar.<br>Eng muhim xabarlar — bir manzilda.</p></div><nav aria-label="Footer kategoriyalar"><span class="eyebrow">Ruknlar</span>'+cats.map(c=>'<a href="'+B.catUrl(c)+'">'+E(c.name)+'</a>').join('')+'</nav><nav aria-label="Ijtimoiy tarmoqlar"><span class="eyebrow">Biz bilan</span>'+Object.entries(social).filter(([,url])=>B.safeUrl(url)).map(([name,url])=>'<a href="'+E(B.safeUrl(url))+'" target="_blank" rel="noopener noreferrer">'+E({telegram:'Telegram',instagram:'Instagram',facebook:'Facebook',youtube:'YouTube'}[name] || name)+B.icon('external')+'</a>').join('')+'<a href="/search.html">Qidiruv</a><a href="/admin/">Tahririyatga kirish</a></nav></div><div class="footer-bottom"><span>© '+new Date().getFullYear()+' Buxara Best</span><a href="/">Yuqoriga qaytish ↑</a><span>Barcha huquqlar himoyalangan.</span></div></div></footer>';
+};
+B.bindHeader=()=>{
+ const d=document.getElementById('mobileNav'),btn=document.getElementById('menuToggle');
+ btn?.addEventListener('click',()=>{d.showModal();btn.setAttribute('aria-expanded','true');});
+ document.getElementById('menuClose')?.addEventListener('click',()=>d.close());
+ d?.addEventListener('close',()=>btn.setAttribute('aria-expanded','false'));
+ d?.addEventListener('click',e=>{if(e.target===d)d.close();});
+ document.getElementById('themeToggle')?.addEventListener('click',()=>{
+ const theme=document.documentElement.dataset.theme==='dark'?'light':'dark';document.documentElement.dataset.theme=theme;
+ try{localStorage.setItem('bb_theme',theme);}catch{}
+ document.getElementById('themeToggle').innerHTML=B.icon(theme==='dark'?'sun':'moon');
+ });
+};
+B.meta=n=>'<div class="meta"><time datetime="'+E(n.publishedAt || '')+'">'+E(B.formatDate(n.publishedAt))+'</time><span>'+B.icon('eye')+B.number(n.views)+'</span>'+(n.video?'<span>'+B.icon('play')+'Video</span>':'')+'</div>';
+B.image=(n,eager=false)=>{const url=B.safeUrl(n.mainImage);return '<div class="story-image '+(!url?'image-unavailable':'')+'">'+(url?'<img src="'+E(url)+'" alt="'+E(n.title)+'" '+(eager?'fetchpriority="high" loading="eager"':'loading="lazy"')+' decoding="async" width="960" height="640">':'<span class="image-monogram" aria-hidden="true">b.</span>')+(n.video?'<span class="video-label">'+B.icon('play')+' Video</span>':'')+'</div>';};
+B.cardHtml=(n,o={})=>'<article class="story-card '+(o.large?'story-card-large':'')+' reveal"><a class="story-link" href="'+B.postUrl(n)+'">'+B.image(n)+'<div class="story-copy"><span class="eyebrow category-label">'+E(n.category?.name || 'Yangiliklar')+'</span><h3>'+E(n.title)+'</h3>'+(o.showExcerpt?'<p>'+E(B.excerpt(n.shortDescription || n.content))+'</p>':'')+B.meta(n)+'</div></a></article>';
+B.sectionTitle=(label,title,href)=>'<div class="section-heading"><div><span class="eyebrow">'+E(label)+'</span><h2>'+E(title)+'</h2></div>'+(href?'<a class="text-link" href="'+E(href)+'">Barchasi '+B.icon('arrow')+'</a>':'')+'</div>';
+B.reveal=()=>{if(matchMedia('(prefers-reduced-motion: reduce)').matches||!('IntersectionObserver' in w))return;const observer=new IntersectionObserver(items=>items.forEach(i=>{if(i.isIntersecting){i.target.classList.add('is-visible');observer.unobserve(i.target);}}),{threshold:0.07});document.querySelectorAll('.reveal').forEach(el=>{el.classList.add('will-reveal');observer.observe(el);});};
+B.shell=(cats=[],active='')=>{document.getElementById('header').innerHTML=B.renderHeader(cats,active);document.getElementById('footer').innerHTML=B.renderFooter(cats);B.bindHeader();};
+try{document.documentElement.dataset.theme=localStorage.getItem('bb_theme') || 'light';}catch{}
 })(window);

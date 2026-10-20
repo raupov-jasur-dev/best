@@ -10,6 +10,22 @@
  */
 const cloudinary = require('../config/cloudinary');
 const { Readable } = require('stream');
+const { mediaUrl } = require('../utils/validation');
+function validateFile(file, video = false) {
+  const b = file?.buffer;
+  if (!Buffer.isBuffer(b) || b.length < 12) throw fail('Fayl bo‘sh yoki yaroqsiz.');
+  const signatures = {
+    'image/jpeg': b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff,
+    'image/png': b.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])),
+    'image/gif': /^GIF8[79]a/.test(b.subarray(0,6).toString()),
+    'image/webp': b.subarray(0,4).toString() === 'RIFF' && b.subarray(8,12).toString() === 'WEBP',
+    'video/mp4': b.subarray(4,8).toString() === 'ftyp',
+    'video/quicktime': ['ftyp','moov','mdat','wide'].includes(b.subarray(4,8).toString()),
+    'video/webm': b.subarray(0,4).equals(Buffer.from([0x1a,0x45,0xdf,0xa3]))
+  };
+  if (!signatures[file.mimetype] || video !== file.mimetype.startsWith('video/')) throw fail('Fayl tarkibi tanlangan turga mos emas.');
+  if (b.length > (video ? 50 : 10) * 1024 * 1024) throw fail(video ? 'Video 50 MB dan katta.' : 'Rasm 10 MB dan katta.');
+}
 
 const BROWSER_UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36';
@@ -51,24 +67,24 @@ async function uploadToCatbox(file) {
   try {
     res = await fetch('https://catbox.moe/user/api.php', {
       method: 'POST',
+      signal: AbortSignal.timeout(45000),
       headers: { 'User-Agent': BROWSER_UA },
       body: form
     });
   } catch (e) {
-    throw fail('Catbox ulanish xatosi: ' + e.message, 502);
+    throw fail('Media xizmatiga ulanib bo‘lmadi. Keyinroq urinib ko‘ring.', 502);
   }
 
   const text = (await res.text()).trim();
   // Muvaffaqiyat: https://files.catbox.moe/xxxxx.ext
   if (!res.ok || !/^https?:\/\//i.test(text)) {
     throw fail(
-      'Catbox xato: ' + (text.slice(0, 200) || res.status) +
-        '. Fayl hajmini tekshiring yoki keyinroq qayta urinib ko‘ring.'
+      'Media xizmati faylni qabul qilmadi. Keyinroq qayta urinib ko‘ring.'
     );
   }
 
   return {
-    url: text,
+    url: mediaUrl(text),
     publicId: text,
     provider: 'catbox'
   };
@@ -86,6 +102,7 @@ async function uploadToFreeimage(file) {
 
   const res = await fetch('https://freeimage.host/api/1/upload', {
     method: 'POST',
+    signal: AbortSignal.timeout(45000),
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
       'User-Agent': BROWSER_UA,
@@ -101,9 +118,9 @@ async function uploadToFreeimage(file) {
     if (/forbidden/i.test(String(msg))) {
       throw fail('Freeimage bloklagan. STORAGE_PROVIDER=catbox qiling (kalit kerak emas).');
     }
-    throw fail('Freeimage: ' + msg);
+    throw fail('Freeimage faylni qabul qilmadi.');
   }
-  return { url, publicId: url, provider: 'freeimage' };
+  return { url: mediaUrl(url), publicId: url, provider: 'freeimage' };
 }
 
 async function uploadToImgBB(file) {
@@ -120,6 +137,7 @@ async function uploadToImgBB(file) {
 
   const res = await fetch('https://api.imgbb.com/1/upload', {
     method: 'POST',
+    signal: AbortSignal.timeout(45000),
     headers: { 'User-Agent': BROWSER_UA, Accept: 'application/json' },
     body: form
   });
@@ -129,11 +147,11 @@ async function uploadToImgBB(file) {
     if (/forbidden/i.test(String(msg))) {
       throw fail('ImgBB bloklagan. STORAGE_PROVIDER=catbox qiling.');
     }
-    throw fail('ImgBB: ' + msg);
+    throw fail('ImgBB faylni qabul qilmadi.');
   }
   return {
-    url: json.data.display_url || json.data.url,
-    publicId: json.data.delete_url || json.data.id,
+    url: mediaUrl(json.data.display_url || json.data.url),
+    publicId: json.data.id,
     provider: 'imgbb'
   };
 }
@@ -158,7 +176,7 @@ async function uploadToCloudinary(file, resourceType = 'image') {
   if (!file?.buffer) return null;
   const result = await uploadBufferCloudinary(file.buffer, { resource_type: resourceType });
   return {
-    url: result.secure_url,
+    url: mediaUrl(result.secure_url),
     publicId: result.public_id,
     provider: 'cloudinary'
   };
@@ -166,6 +184,7 @@ async function uploadToCloudinary(file, resourceType = 'image') {
 
 async function uploadImage(file) {
   if (!file) return null;
+  validateFile(file);
   const provider = getProvider();
 
   try {
@@ -177,7 +196,7 @@ async function uploadImage(file) {
   } catch (e) {
     // Bloklangan provayder → catbox fallback
     if (provider !== 'catbox' && /forbidden|blok/i.test(e.message || '')) {
-      console.warn('[upload] fallback → catbox:', e.message);
+      console.warn('[upload] provider rejected upload; using Catbox');
       return uploadToCatbox(file);
     }
     throw e;
@@ -186,6 +205,7 @@ async function uploadImage(file) {
 
 async function uploadVideo(file) {
   if (!file) return null;
+  validateFile(file, true);
   const provider = getProvider();
 
   // Video: catbox yoki cloudinary

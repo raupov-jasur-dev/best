@@ -9,7 +9,7 @@ async function authenticate(req, res, next) {
       return res.status(401).json({ success: false, message: 'Authentication required' });
     }
     const token = header.split(' ')[1];
-    const decoded = jwt.verify(token, config.jwtSecret);
+    const decoded = jwt.verify(token, config.jwtSecret, { algorithms: ['HS256'] });
     const user = await User.findByPk(decoded.id);
     if (!user || !user.isActive) {
       return res.status(401).json({ success: false, message: 'Invalid or inactive user' });
@@ -17,7 +17,8 @@ async function authenticate(req, res, next) {
     req.user = user;
     next();
   } catch (err) {
-    return res.status(401).json({ success: false, message: 'Invalid or expired token' });
+    if (!['JsonWebTokenError', 'TokenExpiredError', 'NotBeforeError'].includes(err.name)) return next(err);
+    return res.status(401).json({ success: false, code: 'UNAUTHORIZED', message: 'Invalid or expired token' });
   }
 }
 
