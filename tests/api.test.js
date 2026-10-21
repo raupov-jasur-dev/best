@@ -64,7 +64,7 @@ test('failed replacement preserves existing media and successful uploads persist
   global.fetch=async()=>{throw Error('upload unavailable');};
   let r=await auth(request(app).put('/api/admin/news/'+story.id)).attach('mainImage',jpeg,{filename:'image.jpg',contentType:'image/jpeg'});assert.equal(r.status,502);
   assert.equal((await models.News.findByPk(story.id)).mainImage,'https://files.catbox.moe/original.jpg');
-  let calls=0;global.fetch=async()=>{calls++;return new Response('https://files.catbox.moe/upload-'+calls+'.jpg',{status:200});};
+  let calls=0;global.fetch=async(url,options)=>{if(options?.method==='POST'){calls++;return new Response('https://files.catbox.moe/upload-'+calls+'.jpg',{status:200});}return new Response(jpeg,{status:206,headers:{'Content-Type':'image/jpeg'}});};
   r=await auth(request(app).put('/api/admin/news/'+story.id)).attach('mainImage',jpeg,{filename:'image.jpg',contentType:'image/jpeg'}).attach('additionalImages',jpeg,{filename:'gallery.jpg',contentType:'image/jpeg'});
   assert.equal(r.status,200);assert.equal(r.body.data.images.length,1);assert.match(r.body.data.mainImage,/upload-1/);
   global.fetch=originalFetch;

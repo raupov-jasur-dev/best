@@ -44,4 +44,10 @@ B.error=e=>B.empty('Bir oz tanaffus',e.message,'<button type="button" class="but
 B.skeleton=()=>'<div class="skeleton-grid" aria-hidden="true"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div><p class="loading-copy" role="status">Yangiliklar yuklanmoqda…</p>';
 document.addEventListener('click',e=>{if(e.target.closest('[data-reload]'))location.reload();});
 document.addEventListener('error',e=>{if(e.target.tagName==='IMG'){e.target.hidden=true;e.target.parentElement?.classList.add('image-unavailable');}},true);
+document.addEventListener('error',e=>{
+ const video=e.target;if(video.tagName!=='VIDEO'||video.dataset.errorShown)return;
+ video.dataset.errorShown='true';const message=document.createElement('p');message.className='field-help';message.setAttribute('role','status');
+ message.textContent='Video ochilmadi. Ulanish yoki video formatini tekshiring. ';const url=B.safeUrl(video.currentSrc||video.src);
+ if(url){const a=document.createElement('a');a.href=url;a.target='_blank';a.rel='noopener noreferrer';a.textContent='Videoni alohida ochish';message.append(a);}video.after(message);
+},true);
 })(window);

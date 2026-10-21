@@ -46,6 +46,8 @@ Article fields: required nonempty `title` (max 1000), existing `categoryId`, opt
 
 Multipart fields: `mainImage` (one), `video` (one), `additionalImages` (up to five per request), with JPEG/PNG/WebP/GIF images up to 10 MB each and MP4/WebM/MOV videos up to 50 MB. MIME and file signatures must agree. Existing Catbox, Freeimage, ImgBB and Cloudinary provider choices remain supported; Freeimage/ImgBB video requests continue through supported video providers. All requested media is uploaded before a database transaction saves the article. Failed uploads do not erase old media or partly save the article. A provider may retain an orphaned new upload after a later failure; cleanup is an explicit operational task.
 
+New uploads are range-fetched and signature-checked before their URL is saved. Errors `MEDIA_UPLOAD_UNCERTAIN` and `MEDIA_DELIVERY_UNVERIFIED` return502 and never trigger blind re-upload; `MEDIA_NOT_CONFIGURED` returns503. Existing media URLs and JSON fields remain unchanged for Android clients. Cloudinary requires all three server-side credentials; videos over6MB use signed chunked streaming and MP4/H.264/AAC output. No permanent media storage uses Render's filesystem. A complete account and verified live delivery are required before selecting `STORAGE_PROVIDER=cloudinary`; the release does not provision accounts or fabricate credentials.
+
 Presentation update example (array order is the desired order):
 
 ```json

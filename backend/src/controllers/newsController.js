@@ -1,7 +1,7 @@
 const { Op } = require('sequelize');
 const { sequelize, News, Category, NewsImage, Comment } = require('../models');
 const { makeSlug, paginate } = require('../utils/helpers');
-const { uploadImage, uploadVideo } = require('../services/uploadService');
+const { uploadImage, uploadVideo, validateFile } = require('../services/uploadService');
 const { publishToTelegram } = require('../services/publicationService');
 const { fail, text, id, bool } = require('../utils/validation');
 const includeCategory = [{model:Category,as:'category',attributes:['id','name','slug']}];
@@ -74,21 +74,25 @@ async function values(body,existing) {
   if(!existing) {data.slug=makeSlug(data.title);data.telegramStatus=data.status==='draft'?'skipped':'pending';}
   return data;
 }
-async function media(req) {
+async function media(req,signal) {
   const data={}; const gallery=[];
-  if(req.files?.mainImage?.[0]) {const up=await uploadImage(req.files.mainImage[0]);data.mainImage=up.url;data.mainImagePublicId=up.publicId;}
-  if(req.files?.video?.[0]) {const up=await uploadVideo(req.files.video[0]);data.video=up.url;data.videoPublicId=up.publicId;}
-  for(const file of req.files?.additionalImages || []) gallery.push(await uploadImage(file));
+  for(const [field,files]of Object.entries(req.files||{}))for(const file of files)validateFile(file,field==='video');
+  if(req.files?.mainImage?.[0]) {const up=await uploadImage(req.files.mainImage[0],signal);data.mainImage=up.url;data.mainImagePublicId=up.publicId;}
+  if(req.files?.video?.[0]) {const up=await uploadVideo(req.files.video[0],signal);data.video=up.url;data.videoPublicId=up.publicId;}
+  for(const file of req.files?.additionalImages || []) gallery.push(await uploadImage(file,signal));
   return {data,gallery};
 }
 async function save(req,res,next,editing=false) {
+  const disconnect=new AbortController();const abort=()=>{if(!res.writableEnded)disconnect.abort();};res.on('close',abort);
+  const signal=AbortSignal.any([disconnect.signal,AbortSignal.timeout(120000)]);
   try {
     const existing=editing?await News.findByPk(id(req.params.id)):null;
     if(editing && !existing) throw fail('Yangilik topilmadi.',404,'NOT_FOUND');
     const data=await values(req.body,existing);
     if(existing && /^(IN_FLIGHT):/.test(existing.telegramError || '') && data.status==='draft') throw fail('Telegram yuborilmoqda. Jarayon tugashini kuting.',409);
     // Upload all files before saving. Existing media is retained for recovery.
-    const uploaded=await media(req);
+    const uploaded=await media(req,signal);
+    if(signal.aborted)throw Object.assign(new Error('Media saqlash vaqti tugadi. Maqola saqlanmadi.'),{status:504,code:'MEDIA_TIMEOUT',expose:true});
     const previousStatus=existing?.status;
     const news=await sequelize.transaction(async transaction=>{
       let record;
@@ -106,7 +110,7 @@ async function save(req,res,next,editing=false) {
     if(news.status==='published' && (previousStatus!=='published' || req.body.publishAndTelegram===true || req.body.publishAndTelegram==='true')) telegram=await publishToTelegram(news.id);
     const full=await News.findByPk(news.id,{include:[...includeCategory,{model:NewsImage,as:'images'}]});
     res.status(editing?200:201).json({success:true,data:full,...(telegram?{telegram}:{})});
-  } catch(e){next(e);}
+  } catch(e){next(e);}finally{res.removeListener('close',abort);}
 }
 const createNews=(req,res,next)=>save(req,res,next,false);
 const updateNews=(req,res,next)=>save(req,res,next,true);
