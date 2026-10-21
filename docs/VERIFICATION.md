@@ -6,12 +6,14 @@ Verified 2026-10-21 Asia/Tashkent (2026-10-20 UTC). Both existing production ser
 
 | Target | Verified result |
 | --- | --- |
-| [Public website](https://buxara-best.vercel.app) | New editorial frontend, HTTP200; production deployment `dpl_6v6MtEEzZLYdbAHg8cteuvqJvHM6`, promoted after backend checks |
+| [Public website](https://buxara-best.vercel.app) | Editorial frontend, HTTP200; production deployment `dpl_HfWijD76xc2gDqvx2f6ankAhbxxa`, READY and assigned to the official domain |
 | [CMS](https://buxara-best.vercel.app/admin/) | Existing administrator login and authenticated dashboard/news/categories/comments/presentation/editor reads PASS |
-| [Render backend](https://best-cda1.onrender.com/health) | LIVE `dep-dbbrkot9fdbs73f53vf0`, release commit `762dd1b617de06cedb4464258acf41cdbbed965b`; health200 and database connected |
+| [Render backend](https://best-cda1.onrender.com/health) | LIVE `dep-dbc562m1egvs739i5cig`, release commit `dee83efe17aadc9ce27c04c764d6dc9ca99cb731`; health200 and database connected |
 | [Mobile/public configuration](https://best-cda1.onrender.com/api/v1/config) | HTTP200, Buxara Best branding; versioned news/categories/home APIs and legacy `/api` routes verified |
 
 Vercel remains project `best`, root `frontend-vercel`. Render remains service `srv-daigqgh594qs738n1f70`, repository root, branch `master`, build `npm ci --omit=dev`, start `npm start`, health `/health`. The 16 original Render environment values are unchanged; only a non-secret exact-origin `CORS_ORIGINS` allowlist was added. Public API/site build variables were added to Vercel without overwriting existing secrets. Deployment Protection remains enabled.
+
+Domain maintenance on October21 changes only the official public URL to `https://buxara-best.vercel.app`, configuration defaults, metadata and documentation. Render FRONTEND_URL/SITE_BASE_URL already matched; SOCIAL_SITE and Vercel PUBLIC_SITE_URL were aligned. Authentication secrets remain untouched. Targeted build/syntax, offline Telegram URL, actual CMS login, dynamic news/categories, search/navigation, new-domain CORS/canonical/sharing checks pass. Article HTML/UI was checked with an actual read-only CMS snapshot intercepted in the test browser, avoiding the public detail API's view-counter write. No maintenance migration, production content write or Telegram send occurred. The old domain is no longer listed on this project, so no reassignment or forced redirect was attempted.
 
 ## Implemented changes
 
