@@ -19,7 +19,7 @@ const summary=(endpoint,r)=>({endpoint,status:r.response.status,success:r.body.s
 async function publicAudit(){
   for(const endpoint of ['/health','/api/v1/config','/api/news','/api/news?limit=1','/api/news?limit=50&page=1','/api/news?featured=true&limit=1','/api/categories']){
     try{
-      const r=await api(endpoint,{headers:{'Cache-Control':'no-cache',Pragma:'no-cache',Origin:'https://bukharabest.vercel.app'}});
+      const r=await api(endpoint,{headers:{'Cache-Control':'no-cache',Pragma:'no-cache',Origin:'https://buxara-best.vercel.app'}});
       const row=summary(endpoint,r);
       if(endpoint==='/api/categories')row.categories=(r.body.data||[]).map(c=>({id:c.id,name:c.name,postsCount:c.postsCount,createdAt:c.createdAt,updatedAt:c.updatedAt}));
       if(endpoint==='/api/news')report.publicNewsSample=(r.body.data||[]).map(n=>({id:n.id,status:n.status,categoryId:n.categoryId,publishedAt:n.publishedAt}));
@@ -31,7 +31,7 @@ async function publicAudit(){
     }catch(e){report.public.push({endpoint,error:e.cause?.code||e.name});}
   }
   try{
-    const response=await fetch('https://bukharabest.vercel.app/config.js',{signal:AbortSignal.timeout(30000)});
+    const response=await fetch('https://buxara-best.vercel.app/config.js',{signal:AbortSignal.timeout(30000)});
     const source=await response.text();const urls=[...source.matchAll(/https?:\/\/[^'"\s;]+/g)].map(m=>{try{const u=new URL(m[0]);return u.username||u.password?'[redacted]':u.origin;}catch{return 'invalid public URL';}});
     report.frontendConfig={status:response.status,publicOrigins:urls};
   }catch(e){report.frontendConfig={error:e.cause?.code||e.name};}

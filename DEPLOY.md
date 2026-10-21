@@ -5,23 +5,23 @@ Preserve the existing service, domains, database, media folders and project iden
 ## Verified targets and access
 
 - Vercel project: `best`, project ID `prj_5xVdOF2YhwIuHb1fYUppsBRQDmAQ`, team `team_f5yCuDrzKJ9GBUkpwZfyIxQa`, root `frontend-vercel`, framework Other, Node 24.
-- Existing frontend: https://bukharabest.vercel.app
+- Existing frontend: https://buxara-best.vercel.app
 - Existing active backend content endpoint: https://best-cda1.onrender.com/api/news
 - Health endpoint: https://best-cda1.onrender.com/health
 - Git source: `raupov-jasur-dev/best`.
 - Vercel MCP inspection returned scope 403; the CLI's existing credentials successfully inspected and linked the same project.
 - Render CLI/API access is now authenticated in workspace `Best` (`tea-daigjfjm8hqs73cpcj5g`), existing Node service `srv-daigqgh594qs738n1f70`, root empty/repository root, repo `raupov-jasur-dev/best`, branch `master`.
 - The local `.env` points to a different, empty Neon database. It is not the production source and must never replace the existing Render environment. The actual Render database was inspected read-only and matches the public/admin APIs.
-- A production pg_dump18.6 backup was restored into a separate empty local PostgreSQL cluster. Every row in categories/news/users/news_images/comments matched checksums. Receipt: `backups/buxara-best-2026-10-20T18-44-42-401Z.dump.json` (ignored, restricted Windows ACL). The additive migration completed at 18:50:22Z with existing row checksums unchanged. No account/content reset occurred.
+- A production pg_dump18.6 backup was restored into a separate empty local PostgreSQL cluster. Every row in categories/news/users/news_images/comments matched checksums. Receipt: `backups/buxara-best-2026-10-20T18-44-42-401Z.dump.json` (ignored, restricted Windows ACL). The additive migration completed at 18:50:22Z with existing row checksums unchanged. No content reset occurred. The old backend rehashed the same admin password on its final configuration restart before the new release; identity, privileges and the working password are retained, as documented in [VERIFICATION.md](docs/VERIFICATION.md).
 - The actual Render environment has been preserved as a local Windows DPAPI encrypted recovery snapshot. Secret values were not printed, committed, or overwritten.
 
-Latest verified preview: https://best-1p55msh54-kqirol002-2036s-projects.vercel.app (`dpl_CLfwkV42vqj1s7fsSPumFgRoYhji`, READY, existing project, Vercel Authentication retained). Authenticated HTTP routing/config checks and desktop/mobile browser checks passed. The live API currently returns an empty published feed, so this final preview verifies the real empty state and seven dynamic categories; it does not prove restored article/media availability.
+Production frontend is https://buxara-best.vercel.app, deployment `dpl_6v6MtEEzZLYdbAHg8cteuvqJvHM6`, staged with production variables then promoted after backend verification. Actual public/CMS browser checks passed at desktop/tablet/mobile widths with one real article and seven dynamic categories. The existing protected preview https://best-1p55msh54-kqirol002-2036s-projects.vercel.app was also checked against the new live backend. Vercel Authentication was retained. The article's third-party Catbox image/video requests time out from this environment; their URLs were preserved.
 
-The latest pre-release production rollback target was re-inspected: `dpl_Asc6ZczarLr2zbvFSACGJSc2LQTg`, https://best-63t6gmuk2-kqirol002-2036s-projects.vercel.app, aliased to https://bukharabest.vercel.app. Existing Render rollback deploy: `dep-dbbqnj9jfumc73d36l70`, commit `2c7c3b62fe74363813545763453392f84866464b`. Restore the old `npm install` build setting if rebuilding that old commit, which has no lockfile. Release deployment/promotion is recorded separately after live verification.
+The pre-release frontend rollback artifact is `dpl_Asc6ZczarLr2zbvFSACGJSc2LQTg`, https://best-63t6gmuk2-kqirol002-2036s-projects.vercel.app. The pre-release Render artifact is `dep-dbbqnj9jfumc73d36l70`, commit `2c7c3b62fe74363813545763453392f84866464b`. Restore the old `npm install` build setting if rebuilding that commit, which has no lockfile, and review its unsafe startup account/schema behavior before using it. Current verified backend release: `dep-dbbrkot9fdbs73f53vf0`, commit `762dd1b617de06cedb4464258acf41cdbbed965b`.
 
-Read-only observations changed during verification: an earlier live browser check showed one published article and twelve categories; subsequent API checks returned zero published articles and seven categories. No production CRUD, view-incrementing article request, migration or Telegram send was issued by this work. Confirm the correct existing Render database/service and investigate this difference before release. Do not seed or initialize the current live database to make the frontend appear populated.
+The actual Render database, SQL and authenticated/public APIs now agree on one published article and seven categories. Historical logs show12 categories before7 under the old code; table statistics include prior deletes. The earlier zero-news observation was not reproduced. The local `.env` points to a different empty database. Deletion actor/exact time cannot be established without historical audit/recovery data. No production DELETE/reset/seed, content save or Telegram send was performed by this release. One deliberate browser article read advanced its normal view counter. Recover already absent records only from a verified pre-deletion backup or provider recovery point.
 
-Keep backend and database production changes blocked until the correct existing Render service, environment and tested backup are accessible. A frontend preview may be inspected against the legacy API; it is not evidence that the new backend/security fixes are deployed. Do not promote a preview as the full release before the backend is ready.
+Production access, backup/restore, additive migration, backend deployment and frontend promotion are verified for this release. Future database changes still require a fresh restore-tested matching backup. See [release evidence](docs/RELEASE.md) and [verification results](docs/VERIFICATION.md).
 
 ## 1. Back up and prove recovery
 
@@ -49,7 +49,7 @@ Use the repository root containing `package.json`.
 - Start: `npm start`
 - Health check: `/health`
 - `NODE_ENV=production`, correct existing `DATABASE_URL`, unique 32+ character `JWT_SECRET`.
-- `FRONTEND_URL=https://bukharabest.vercel.app`; keep existing `SITE_BASE_URL` if it is a valid public domain. Telegram article links deliberately use `FRONTEND_URL`.
+- `FRONTEND_URL=https://buxara-best.vercel.app`; keep existing `SITE_BASE_URL` if it is a valid public domain. Telegram article links deliberately use `FRONTEND_URL`.
 - `CORS_ORIGINS` is a comma-separated exact-origin allowlist for any extra/custom/preview domains. No wildcard tenants.
 - Keep all current storage/Telegram credentials; coordinate controlled rotations of exposed values as documented in [SECURITY.md](docs/SECURITY.md).
 - `TELEGRAM_DRY_RUN=true` for staging/tests. Set false only for the intended production channel after verification.
@@ -70,7 +70,7 @@ If the new table is not yet present, public reads use default presentation; prot
 Keep the existing linked project and domains. `frontend-vercel/vercel.json` sets `node build.js`, output `dist`, and no dependency install for the static frontend. Configure public values in the existing project's Vercel environment or use the CLI's public build variables:
 
 ```sh
-npx vercel --scope team_f5yCuDrzKJ9GBUkpwZfyIxQa --build-env PUBLIC_API_URL=https://best-cda1.onrender.com --build-env PUBLIC_SITE_URL=https://bukharabest.vercel.app
+npx vercel --scope team_f5yCuDrzKJ9GBUkpwZfyIxQa --build-env PUBLIC_API_URL=https://best-cda1.onrender.com --build-env PUBLIC_SITE_URL=https://buxara-best.vercel.app
 ```
 
 The checkout root is linked and the project's configured root remains `frontend-vercel`. Never place backend secrets into public variables. Do not rely on NEXT_PUBLIC variables being automatically interpolated into static JavaScript: the explicit build generates `config.js`.

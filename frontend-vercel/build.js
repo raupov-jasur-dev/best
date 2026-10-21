@@ -8,14 +8,14 @@ function publicUrl(value,name){
   return u.origin;
 }
 const api=publicUrl(process.env.PUBLIC_API_URL,'PUBLIC_API_URL');
-const site=publicUrl(process.env.PUBLIC_SITE_URL || 'https://bukharabest.vercel.app','PUBLIC_SITE_URL');
+const site=publicUrl(process.env.PUBLIC_SITE_URL || 'https://buxara-best.vercel.app','PUBLIC_SITE_URL');
 const source=fs.realpathSync(__dirname),out=path.resolve(source,'dist');
 if(path.dirname(out)!==source || path.basename(out)!=='dist' || (fs.existsSync(out) && fs.lstatSync(out).isSymbolicLink()))throw Error('Unsafe build output directory');
 fs.rmSync(out,{recursive:true,force:true});fs.mkdirSync(out,{recursive:true});
 for(const name of ['index.html','category.html','search.html','post.html','404.html','assets','admin'])fs.cpSync(path.join(__dirname,name),path.join(out,name),{recursive:true});
 fs.writeFileSync(path.join(out,'config.js'),'window.__API_URL__ = '+JSON.stringify(api)+';\n');
 for(const name of ['index.html','category.html','search.html','post.html','404.html']){
-  const file=path.join(out,name);fs.writeFileSync(file,fs.readFileSync(file,'utf8').replaceAll('https://bukharabest.vercel.app',site));
+  const file=path.join(out,name);fs.writeFileSync(file,fs.readFileSync(file,'utf8').replaceAll('https://buxara-best.vercel.app',site));
 }
 fs.writeFileSync(path.join(out,'robots.txt'),'User-agent: *\nDisallow: /admin\n');
 console.log('Static build validated: public config and allowlisted assets only.');

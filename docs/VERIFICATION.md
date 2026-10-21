@@ -1,85 +1,68 @@
-# Buxara Best — tekshiruv va chiqarish holati
+# Buxara Best verification and production release
 
-Sana: 2026-10-20. **To‘liq production reliz yakunlanmagan.** Yangi kod lokal tekshirildi va mavjud Vercel loyihasiga himoyalangan preview sifatida joylashtirildi. Render yangilanishi va frontend production promotion bajarilmadi.
+Verified 2026-10-21 Asia/Tashkent (2026-10-20 UTC). Both existing production services now run the release. No replacement projects, database resets, content deletions or secret rotations were performed.
 
-## Amalga oshirilgan ishlar
+## Production targets
 
-- `frontend-vercel/`: yangi editorial bosh sahifa, kategoriya, qidiruv, maqola, 404, mobil menyu, light/dark mavzu, loading/empty/error holatlari. Buxara Best logotipi, favicon, social tasvir va litsenziyali lokal shriftlar. Kategoriyalar bazadan olinadi; arxiv qidiruvi va pagination server orqali ishlaydi.
-- `frontend-vercel/assets/js/{api,layout,public,admin,cms-views,cms-editor}.js`: umumiy komponentlar va alohida CMS modullari. CMS dashboard, yangilik/category CRUD, media preview/progress, qoralama/nashr/featured, moderatsiya, Telegram holati/retry/reconciliation, saqlanadigan kategoriya tartibi va homepage ko‘rinishi.
-- `backend/src/`: eski REST kontraktlarini saqlagan `/api/v1`, `/api/config`, `/api/home`, admin presentation API, validatsiya va xavfsiz media/publishing jarayonlari. Express fallback ham shu frontend/admin fayllaridan foydalanadi.
-- `scripts/`, `tests/`, `package-lock.json`: explicit migratsiya, backup/restore tekshiruvi, explicit admin boshqaruvi, real izolyatsiyalangan PostgreSQL testlari va takrorlanadigan build/install.
-- Eski EJS/Django shablonlari va media yo‘llari saqlandi; takroriy eski admin canonical panelga yo‘naltirildi. Infratuzilma identifikatorlari va mavjud domenlar qayta nomlanmadi.
-
-## Tasdiqlangan tuzatishlar
-
-Production JWT fallback, har restartdagi admin paroli/roli reseti, avtomatik `sync(alter)`, wildcard Vercel CORS, public response orqali private media/Telegram maydonlari chiqishi, HTML attribute XSS, localStorage JWT, uploaddan oldin eski mediani o‘chirish va Telegram duplicate retry muammolari tuzatildi. Qoralama Telegramga yuborilmaydi; noaniq yetkazilish operator tekshiruvisiz qayta yuborilmaydi.
-
-Backup gate noto‘g‘ri/yo‘q/kelajak/eskirgan sanani, matn ko‘rinishidagi restore tasdig‘ini va checksum/source mos kelmasligini rad etadi. Katta dump checksum’i cheklangan xotira bilan hisoblanadi. Keyingi accessibility tekshiruvida topilgan public/admin logotipining label/name nomuvofiqligi ham tuzatildi.
-
-Credential qiymatlari hisobotga kiritilmagan. Nazoratli rotation ro‘yxati: DATABASE_URL paroli, JWT_SECRET, ADMIN_PASSWORD, TELEGRAM_BOT_TOKEN va arxivdagi OpenWeather kaliti. Qayta tiklash va amaldagi servis muhiti tasdiqlanmasdan rotation yoki Git history rewrite bajarilmadi. Tafsilot: [SECURITY.md](SECURITY.md).
-
-## Bajarilgan testlar
-
-| Tekshiruv | Haqiqiy natija |
+| Target | Verified result |
 | --- | --- |
-| `npm test` | **28/28 PASS**, 0 fail, 0 skipped; 72.1 soniya |
-| API integratsiyasi | 20 test: login/role/CORS, category/news CRUD, draft/published, upload failure/limits, public list/detail/search/pagination, moderatsiya, presentation, Telegram concurrency/retry, restart saqlanishi, additive migration |
-| Backup receipt | 4 test: source, sana, restore boolean, o‘zgargan checksum |
-| Telegram qo‘shimcha testlari | 4 test: URL size rejection’dan keyin multipart, timeout’da blind retry yo‘qligi, host allowlist, draft’da tarmoq chaqiruvi yo‘qligi |
-| Playwright | **9/9 PASS**, 0 fail/flaky/skipped; 133.4 soniya |
-| Responsive | 1440×1000, 768×1024, 390×844; public/detail/search/pagination, XSS, CMS CRUD/publish, moderatsiya, presentation, session storage, menyu/Escape, reduced motion va overflow tekshirildi |
-| axe accessibility | Tekshirilgan public/CMS ekranlarida WCAG 2 A/AA va 2.1 A/AA: 0 violation; live preview login’da desktop/mobile 0 violation |
-| JavaScript syntax | **51 fayl, 0 failure** |
-| Static build / diff | Build PASS; `git diff --check` PASS |
-| Dependency audit / production install | `npm audit`: 0 vulnerability; alohida toza katalogda yakuniy `npm ci --omit=dev --no-fund` PASS, 137 paket qo‘shildi, 138 paket audit qilindi, 0 vulnerability. Install scriptlari o‘chirilmadi. Upstream `dottie` deprecation ogohlantirishi saqlanadi |
+| [Public website](https://buxara-best.vercel.app) | New editorial frontend, HTTP200; production deployment `dpl_6v6MtEEzZLYdbAHg8cteuvqJvHM6`, promoted after backend checks |
+| [CMS](https://buxara-best.vercel.app/admin/) | Existing administrator login and authenticated dashboard/news/categories/comments/presentation/editor reads PASS |
+| [Render backend](https://best-cda1.onrender.com/health) | LIVE `dep-dbbrkot9fdbs73f53vf0`, release commit `762dd1b617de06cedb4464258acf41cdbbed965b`; health200 and database connected |
+| [Mobile/public configuration](https://best-cda1.onrender.com/api/v1/config) | HTTP200, Buxara Best branding; versioned news/categories/home APIs and legacy `/api` routes verified |
 
-API va brauzer testlari faqat izolyatsiyalangan lokal PostgreSQL’da bajarildi. Sinov maqolalari productionga yuborilmadi. Upload failure testidagi 502 loglari ataylab yaratilgan provider xatolaridir.
+Vercel remains project `best`, root `frontend-vercel`. Render remains service `srv-daigqgh594qs738n1f70`, repository root, branch `master`, build `npm ci --omit=dev`, start `npm start`, health `/health`. The 16 original Render environment values are unchanged; only a non-secret exact-origin `CORS_ORIGINS` allowlist was added. Public API/site build variables were added to Vercel without overwriting existing secrets. Deployment Protection remains enabled.
 
-## Performance
+## Implemented changes
 
-Lighthouse 13.5.0, Playwright Chromium, lokal Express va test fixture’lari. Yakuniy o‘lchovlarda boshqa agent brauzer testlari parallel ishlatilmadi; har viewport uchun uchta ketma-ket audit olindi.
+The public homepage, category/search/archive, article, navigation, mobile menu, 404 and loading/empty/error states use the new editorial identity, local licensed fonts and responsive layouts. Categories and homepage presentation come from the database. Existing `.html?id=` article links remain functional. Shared modules replace duplicated frontend logic.
 
-| Median natija | Mobil | Desktop |
-| --- | --- | --- |
-| Performance | **80** (77–88) | **96** (96–99) |
-| Accessibility / Best practices / SEO | 100 / 100 / 100 | 100 / 100 / 100 |
-| LCP | 2.60 s | 0.66 s |
-| CLS | 0 | 0 |
-| TBT | 622 ms | 158 ms |
+The CMS provides real statistics, paginated/filterable content, news/category CRUD, image/video previews and progress, draft/published/featured controls, moderation, persisted category presentation and Telegram status/retry/reconciliation. Production smoke tests use existing content without saving editorial changes; CRUD and publishing tests ran against isolated PostgreSQL.
 
-Dastlabki lokal audit 26/50 performance va 0.178/0.150 CLS ko‘rsatgan. Header joyi oldindan rezervlandi, Intl formatter’lar qayta ishlatiladi, pastdagi kategoriya seksiyalari `content-visibility` bilan chiziladi. Dastlabki Latin shriftlar 277,384 baytdan 91,748 baytga kamaytirildi; glyphlar va litsenziyalar saqlandi. Bir parallel brauzer yuklamasi ostidagi mobil audit 41 bo‘lgan — bu alohida saqlandi, yakuniy median hisobiga aralashtirilmadi.
+Verified security fixes include removal of JWT defaults, startup account resets and automatic schema alterations; exact-origin CORS; HTML/attribute escaping and CSP; tab-scoped admin sessions; upload validation and retained old media; private provider/Telegram fields excluded from public responses; bounded Telegram captions/downloads and durable duplicate prevention. Production TLS retains certificate verification and no longer emits the verified pg SSL-alias warning. See [SECURITY.md](SECURITY.md).
 
-Mobil TBT hali yaxshilanishi mumkin. Bu natijalar production Lighthouse yoki real foydalanuvchilarning Core Web Vitals/INP bahosi emas. Xususiy raw hisobotlar, olti audit va screenshotlar ignored `.qa/` katalogida; qayta ishga tushirish: `node tests/server.js`, boshqa terminalda `AUDIT_RUNS=3 node scripts/performance.mjs` (PowerShell’da env alohida o‘rnatiladi).
+## Database investigation and preservation
 
-## Vercel
+The actual Render PostgreSQL18.6 database differs from the empty database configured in the local `.env`. Production SQL, public APIs and the authenticated dashboard agree on **1 published article, 7 categories and 1 administrator**; gallery images/comments are zero. Current listing filters, pagination and cache checks do not explain the earlier zero-news observation, which was not reproduced.
 
-- Mavjud loyiha: `best`, root `frontend-vercel`; yangi loyiha ochilmadi.
-- [Yakuniy preview](https://best-1p55msh54-kqirol002-2036s-projects.vercel.app): **READY**, `dpl_CLfwkV42vqj1s7fsSPumFgRoYhji`. Vercel Authentication saqlandi.
-- `/`, `/admin/`, `/config.js`, eski `.html?id=` yo‘li 200; legacy category yo‘li 308; noma’lum sahifa branded 404. CSP va Render API config tekshirildi.
-- Desktop/mobile haqiqiy API bilan bo‘sh holat, 7 dinamik kategoriya, optimallashtirilgan shrift, admin login va overflow/runtime tekshiruvlari PASS. Production hisobiga kirilmadi va CMS mutatsiyasi yuborilmadi.
-- [Production frontend](https://bukharabest.vercel.app): HTTP 200, **eski deployment**. Hozirgi rollback deployment: `dpl_Ge4cSmSR8yTsUNL4BsrUXx1maU5E`. Yangi preview productionga ko‘tarilmadi.
+Historical Render startup logs show 12 categories at 16:57 UTC and 7 at 17:50 under the same old commit. PostgreSQL lifetime statistics show 13 category inserts/6 deletes and 8 news inserts/7 deletes. These are evidence of historical data changes, not an audit identifying who deleted records or exactly when. Recovery of already absent records requires a pre-deletion backup or Neon recovery history; no speculative restore was attempted.
 
-## Render, kontent va media
+A production exported MVCC snapshot was dumped with pg_dump18.6 and restored into a separate empty local database. Counts and full row checksums matched for all five business tables, including passwords, roles and media fields. The protected off-Render backup receipt is `backups/buxara-best-2026-10-20T18-44-42-401Z.dump.json` (ignored). The additive migration completed at 18:50:22Z; all business-table checksums before/after matched.
 
-[Mavjud backend](https://best-cda1.onrender.com) ishlayapti: `/health` 200 va DB ulanishi OK; `/api/news` va `/api/categories` 200; production frontend Origin uchun CORS bor. `/api/v1/config` esa **404** — yangi backend hali joylashtirilmagan.
+During service configuration, the **old** backend restarted at 18:59 UTC and rehashed the existing admin password, before the new backend became live at 19:02. Backup comparison identifies only the password hash and account update timestamp as changed: identity, email, role, active state and the working password are preserved. The account timestamp remains stable after the new backend starts and after actual CMS logins. No corrective password overwrite was performed. The new startup code does not update accounts or alter schema.
 
-Tekshiruv davomida live javoblar o‘zgardi: avval 1 nashr/12 kategoriya, keyin 0 nashr/7 kategoriya. Sababi tasdiqlanmadi. Ushbu ish production CRUD, schema migratsiyasi, reset/seed yoki view sonini oshiradigan article-detail chaqiruvini bajarmadi. To‘g‘ri tarixiy baza ulanganini Render kirishisiz tasdiqlab bo‘lmaydi; health 200 buning o‘rnini bosmaydi.
+Post-release backup comparison confirms all content, category, media and user identity/privilege fields are preserved. One intentional production article-detail browser read advanced the ordinary view counter from5 to6 and its update timestamp; no test article, comment, category or Telegram message was created.
 
-Avvalgi live maqolaning Catbox rasmi bu muhitdan yuklanmadi; HEAD tekshiruvi tarmoq xatosi bilan tugadi. URL o‘zgartirilmadi va boshqa rasm bilan almashtirilmadi. Oxirgi live feed bo‘sh bo‘lgani sababli production article/media mavjudligi yakuniy tasdiqlanmadi. Lokal real image render, media failure/fallback va upload jarayonlari testlardan o‘tgan.
+## Actual checks
 
-## Telegram
+| Check | Result |
+| --- | --- |
+| Previously completed critical tests | **28/28 PASS**, zero failures/skips; API authentication/roles, category/news CRUD, draft/published, upload failures/limits, listing/detail/search/pagination, moderation, presentation, Telegram concurrency/retry, restart, migration and backup receipts |
+| Additional production TLS configuration tests | **4/4 PASS**; secure SSL normalization, encoded credentials, no alias warning, explicit compatibility option |
+| Previously completed Playwright suite | **9/9 PASS**, desktop1440x1000/tablet768x1024/mobile390x844; CRUD/publishing remained isolated from production |
+| JavaScript syntax | **53 files PASS**, zero failures |
+| Static build / diff | PASS |
+| Dependency audit / clean production install | 0 vulnerabilities; `npm ci --omit=dev --no-fund` PASS, 137 packages installed/138 audited; upstream `dottie` deprecation remains |
+| Production backend | Health/config/home, legacy/versioned news/categories, existing login/me/dashboard and protected CMS reads200; anonymous admin401; foreign Origin403; approved origins return exact CORS headers |
+| Staged production HTTP | Authenticated Vercel CLI checks for public/CMS/config/article/static JS200; normalized CMS source matches repository; production artifact promoted without rebuilding |
+| Preview with new live backend | Existing content, actual CMS login, read-only routes and responsive checks PASS |
+| Public production browser | Real headline/7 dynamic categories, category/search, legacy article, CMS login/read-only management/editor, mobile menus, session storage PASS; 0 runtime errors/overflow |
+| Production axe | Public homepage and authenticated CMS dashboard: 0 WCAG2A/AA and2.1A/AA violations |
+| Public routing/security | `/`, `/admin/`, config and legacy article200; legacy category308; branded missing-page404; CSP verified |
+| Backend legacy media | Existing static image HEAD200 with `Cross-Origin-Resource-Policy: cross-origin` |
 
-Mock orqali text/photo/video, caption escaping/uzunligi, frontend link, draft, multipart fallback, concurrent claim va retry tekshirildi. Production kanalga hech qanday test xabari yuborilmadi.
+The initial staging browser request was denied by Vercel's development-to-production Trusted Sources rule. Protection was preserved: staged HTTP checks used the authenticated CLI, browser checks used the existing preview, and the promoted primary domain then passed the full browser smoke. A source-comparison harness was corrected to normalize Windows CRLF; deployed JavaScript content was identical.
 
-Saqlangan lokal konfiguratsiyada read-only `getMe` 200, `getChatMember` 400 bo‘lgan; keyingi tekshiruvlarda timeout ham kuzatilgan. 400 sababini hamda Render’dagi haqiqiy kanal konfiguratsiyasini tasdiqlash uchun servis kirishi kerak. **Live kanalga muvaffaqiyatli nashr tasdiqlanmagan.** Xavfsiz test kanalida alohida tekshiruv zarur.
+## Measured performance
 
-## Mobil API va qolgan majburiy qadamlar
+Previously completed Lighthouse13.5.0 local fixture audits used three sequential samples per viewport. Median mobile performance80 (77-88), desktop96 (96-99); accessibility/best-practices/SEO100 each; LCP2.60s/0.66s, CLS0/0, TBT622ms/158ms. Latin fonts were reduced from277,384 to91,748 bytes with licenses/glyphs retained. These are lab results, not production Core Web Vitals or field INP. No production score is invented. Private reports/screenshots are under ignored `.qa/`.
 
-`/api/v1`, umumiy PostgreSQL, public config/home, pagination/filter/errors va admin-only mutation kontraktlari kod va [API.md](API.md) hujjatida tayyor. Bu endpointlar Render yangilangach live bo‘ladi. Kontent o‘zgarishi keyingi API so‘rovlarida ko‘rinadi; native ilova kodi/dizayni/binary o‘zgarishi ilova yangilanishini talab qilishi mumkin. Android/iOS ilovalari qurilmadi.
+## Telegram and remaining external work
 
-1. Mavjud Render hisobiga CLI/API yoki connector kirishini muhitda sozlash; maxfiy kalitni chatga yubormaslik.
-2. To‘g‘ri amaldagi DATABASE_URL va tarixiy kontentni tekshirish, live count farqi sababini aniqlash.
-3. Production dump va alohida bo‘sh bazada muvaffaqiyatli restore bilan backup receipt tayyorlash. Bunday production backup hozir yo‘q.
-4. Exposed credential’larni recovery yo‘li bilan rejalashtirilgan tartibda almashtirish; kuchli JWT/TLS/CORS muhitini tasdiqlash.
-5. [DEPLOY.md](../DEPLOY.md) bo‘yicha additive migration → mavjud Render deploy → v1/content/media tekshiruvi → Vercel production staging/promotion tartibida chiqarish.
-6. Kanal sozlamasini tasdiqlash va xavfsiz test kanali bilan Telegramni tekshirish. Muvaffaqiyatsiz release’da yozilgan rollback rejasi qo‘llanadi.
+The actual Render bot/channel configuration passes read-only getMe/getChat/getChatMember200; the bot is administrator with `can_post_messages=true`. Historical failures are `chat not found`; the reported403 was not reproduced. The local saved channel differs and must not replace Render configuration. Mock tests cover text/photo/video, captions, links, drafts, multipart fallback and safe retry. No production test message was sent, so live text/photo/video delivery is not claimed.
+
+The existing article's Catbox image and video HEAD requests time out from this environment (`UND_ERR_CONNECT_TIMEOUT`). URLs and hosted assets were preserved; a generic replacement was not introduced. Backend media compatibility and frontend failure fallbacks work, but third-party media availability remains externally unverified.
+
+Historical deletion recovery requires a pre-deletion backup/Neon recovery access. Previously exposed credential candidates still require coordinated rotation as listed in [SECURITY.md](SECURITY.md); no secret was changed during this release. Keep an additional protected off-device backup copy.
+
+Versioned APIs, shared PostgreSQL, admin-only mutations, configuration and pagination/error contracts are live and documented in [API.md](API.md). Subsequent content requests reflect saved changes; native application code/design/binary changes may still require an app update. Android/iOS applications were not built.

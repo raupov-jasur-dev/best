@@ -18,9 +18,9 @@ Review/rotate the original **DATABASE_URL password**, **JWT_SECRET**, **ADMIN_PA
 
 Rotation must be coordinated with a verified backup, current service access, secret manager recovery and staged environment updates. Changing JWT_SECRET invalidates current sessions. Use BotFather for bot-token rotation and update the existing Render service. This change deliberately does not rotate live credentials or rewrite Git history.
 
-The original database connection reachable through the local example did not expose the expected `news` table; it has not been initialized or mutated. It is not a verified backup source for the live Render platform. Obtain the existing service's correct database configuration through the provider dashboard without copying secret values into chat or reports.
+The local example points to an empty database, not the actual Render database; it was not initialized or mutated. Authorized Render access established the real production connection. A production snapshot was restored into a separate empty cluster with matching row checksums before the additive migration. Original Render secrets remain unchanged, with a private Windows DPAPI recovery snapshot. Never copy the local example over the existing Render environment.
 
-The live published listing/category counts changed during read-only verification (one/twelve to zero/seven). The cause is unverified without Render/database access. No production content mutation was performed by this implementation; do not interpret API health alone as proof that the correct historical content database is connected.
+Current SQL, public APIs and authenticated CMS agree on one published article/seven categories. Historical old-backend logs and lifetime delete counters confirm prior data changes, but do not identify an actor/time; recovering already absent records needs a pre-deletion backup or provider history. No production DELETE/reset/seed was performed. The old backend rehashed the existing password on a configuration restart before the new deploy; identity, privileges and the same working password remain preserved. Account data remains stable after the new startup. Full findings are in [VERIFICATION.md](VERIFICATION.md).
 
 ## Remaining operational safeguards
 

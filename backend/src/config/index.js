@@ -9,8 +9,8 @@ module.exports = {
   nodeEnv: process.env.NODE_ENV || 'development',
   jwtSecret: secret || randomBytes(48).toString('hex'),
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '8h',
-  frontendUrl: (process.env.FRONTEND_URL || 'https://bukharabest.vercel.app').replace(/\/$/, ''),
-  siteBaseUrl: (process.env.SITE_BASE_URL || 'https://bukharabest.uz').replace(/\/$/, ''),
+  frontendUrl: (process.env.FRONTEND_URL || 'https://buxara-best.vercel.app').replace(/\/$/, ''),
+  siteBaseUrl: (process.env.SITE_BASE_URL || 'https://buxara-best.vercel.app').replace(/\/$/, ''),
   siteName: 'Buxara Best',
   corsOrigins: (process.env.CORS_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean),
   telegramDryRun: process.env.TELEGRAM_DRY_RUN === 'true',
@@ -24,7 +24,7 @@ module.exports = {
     process.env.SOCIAL_FACEBOOK ||
     'https://www.facebook.com/groups/716578230428961/?ref=share&mibextid=NSMWBT',
   socialYoutube: process.env.SOCIAL_YOUTUBE || 'https://www.youtube.com/@bukharabest2436',
-  socialSite: process.env.SOCIAL_SITE || process.env.SITE_BASE_URL || 'https://bukharabest.uz',
+  socialSite: process.env.SOCIAL_SITE || process.env.SITE_BASE_URL || 'https://buxara-best.vercel.app',
 
   homeCarouselCategoryIds: (process.env.HOME_CAROUSEL_CATEGORY_IDS || '')
     .split(',')

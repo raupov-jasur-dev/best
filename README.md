@@ -2,6 +2,8 @@
 
 An editorial news platform on the existing **Node.js / Express / Sequelize / PostgreSQL** architecture. The production frontend lives in `frontend-vercel/`; the backend entry point is `backend/src/server.js`. Both Vercel and the Express fallback use the same public screens and admin assets.
 
+Verified production: [website and CMS](https://buxara-best.vercel.app), [backend health](https://best-cda1.onrender.com/health) and [versioned public configuration](https://best-cda1.onrender.com/api/v1/config). Actual release evidence, backup/rollback details and external limits are in [docs/VERIFICATION.md](docs/VERIFICATION.md) and [docs/RELEASE.md](docs/RELEASE.md).
+
 ## Local setup
 
 Use Node.js 22 or newer (the linked Vercel project uses Node 24).
@@ -45,7 +47,7 @@ For an optional Lighthouse lab audit, start `node tests/server.js` in a separate
 For a static build, provide public deployment settings explicitly:
 
 ```sh
-PUBLIC_API_URL=https://best-cda1.onrender.com PUBLIC_SITE_URL=https://bukharabest.vercel.app npm run build
+PUBLIC_API_URL=https://best-cda1.onrender.com PUBLIC_SITE_URL=https://buxara-best.vercel.app npm run build
 ```
 
 On PowerShell set `$env:PUBLIC_API_URL` and `$env:PUBLIC_SITE_URL` before running the command. The output is `frontend-vercel/dist`; only allowlisted public assets are copied. No backend environment variable is bundled.
